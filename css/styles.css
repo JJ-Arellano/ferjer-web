@@ -1,0 +1,30 @@
+.rounded-4 { border-radius: 1rem !important; }
+
+.login-card{
+  width: 100%;
+  max-width: 460px;
+}
+
+/* Sidebar fija */
+.sidebar{
+  width: 260px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+}
+
+.sidebar .nav-link{
+  color: #334155;
+  font-weight: 600;
+}
+
+.sidebar .nav-link:hover{
+  background: #f1f5f9;
+}
+
+.sidebar .nav-link.active{
+  background: #e8f0ff;
+  color: #0b5ed7;
+}
