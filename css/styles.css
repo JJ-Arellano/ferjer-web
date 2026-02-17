@@ -1,9 +1,25 @@
 .rounded-4 { border-radius: 1rem !important; }
 
+
+
 .login-card{
   width: 100%;
   max-width: 460px;
 }
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.card {
+  border: none;
+}
+
+.btn-dark {
+  background-color: #343a40;
+  border: none;
+}
+
 
 /* Sidebar fija */
 .sidebar{

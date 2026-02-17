@@ -3,79 +3,126 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Crear usuario | FERJER</title>
+  <title>Registro | FERJER</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="bg-body-tertiary">
 
-  <div class="container min-vh-100 d-flex align-items-center justify-content-center py-4">
-    <div class="card shadow-sm border-0 rounded-4 login-card">
-      <div class="card-body p-4 p-md-5">
-        <div class="mb-3">
-          <h1 class="h4 fw-bold mb-1">Crear usuario</h1>
-          <p class="text-secondary mb-0">Registro para acceso al sistema</p>
+<body>
+
+<section class="vh-100" style="background-color: #6c757d;">
+  <div class="container py-5 h-100">
+    <div class="row d-flex justify-content-center align-items-center h-100">
+      <div class="col col-xl-10">
+        <div class="card shadow" style="border-radius: 1rem;">
+          <div class="row g-0">
+
+            <!-- FORMULARIO (IZQUIERDA) -->
+            <div class="col-md-6 col-lg-7 d-flex align-items-center">
+              <div class="card-body p-4 p-lg-5 text-black">
+
+                <form id="registerForm">
+
+                  <div class="mb-3">
+                    <span class="h1 fw-bold">FERJER</span>
+                  </div>
+
+                  <h5 class="fw-normal mb-4">
+                    Crear nueva cuenta
+                  </h5>
+
+                  <!-- Nombre -->
+                  <div class="mb-3">
+                    <label class="form-label">Nombre completo</label>
+                    <input type="text"
+                           id="regName"
+                           class="form-control form-control-lg"
+                           required>
+                  </div>
+
+                  <!-- Correo -->
+                  <div class="mb-3">
+                    <label class="form-label">Correo electrónico</label>
+                    <input type="email"
+                           id="regEmail"
+                           class="form-control form-control-lg"
+                           required>
+                  </div>
+
+                  <!-- Contraseña -->
+                  <div class="mb-3">
+                    <label class="form-label">Contraseña</label>
+                    <input type="password"
+                           id="regPass"
+                           class="form-control form-control-lg"
+                           minlength="6"
+                           required>
+                  </div>
+
+                  <!-- Confirmar -->
+                  <div class="mb-3">
+                    <label class="form-label">Confirmar contraseña</label>
+                    <input type="password"
+                           id="regPass2"
+                           class="form-control form-control-lg"
+                           minlength="6"
+                           required>
+                  </div>
+
+                  <!-- Rol -->
+                  <div class="mb-4">
+                    <label class="form-label">Tipo de usuario</label>
+                    <select id="regRole" class="form-select form-select-lg" required>
+                      <option value="">Seleccionar</option>
+                      <option value="Cliente">Cliente</option>
+                      <option value="Administrador">Administrador</option>
+                    </select>
+                  </div>
+
+                  <!-- Mensajes -->
+                  <div id="regMsgOk" class="alert alert-success d-none">
+                    Usuario registrado correctamente.
+                  </div>
+
+                  <div id="regMsgErr" class="alert alert-danger d-none">
+                    El correo ya está registrado.
+                  </div>
+
+                  <!-- Botón -->
+                  <div class="d-grid mb-3">
+                    <button type="submit" class="btn btn-dark btn-lg">
+                      Registrarse
+                    </button>
+                  </div>
+
+                  <p>
+                    ¿Ya tienes cuenta?
+                    <a href="login.html">Iniciar sesión</a>
+                  </p>
+
+                </form>
+
+              </div>
+            </div>
+
+            <!-- IMAGEN (DERECHA) -->
+            <div class="col-md-6 col-lg-5 d-none d-md-block">
+              <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b"
+                   alt="registro"
+                   class="img-fluid h-100"
+                   style="border-radius: 0 1rem 1rem 0; object-fit: cover;" />
+            </div>
+
+          </div>
         </div>
-
-        <form id="registerForm" novalidate>
-          <div class="mb-3">
-            <label class="form-label">Nombre</label>
-            <input type="text" class="form-control" id="regName" placeholder="Nombre y apellido" required>
-            <div class="invalid-feedback">Ingresa tu nombre.</div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Correo</label>
-            <input type="email" class="form-control" id="regEmail" placeholder="correo@ejemplo.com" required>
-            <div class="invalid-feedback">Ingresa un correo válido.</div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Contraseña</label>
-            <input type="password" class="form-control" id="regPass" minlength="6" placeholder="Mínimo 6 caracteres" required>
-            <div class="invalid-feedback">Mínimo 6 caracteres.</div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Confirmar contraseña</label>
-            <input type="password" class="form-control" id="regPass2" minlength="6" placeholder="Repite la contraseña" required>
-            <div class="invalid-feedback">Las contraseñas no coinciden.</div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Rol</label>
-            <select class="form-select" id="regRole" required>
-              <option value="" selected disabled>Selecciona un rol</option>
-              <option value="Administrador">Administrador</option>
-              <option value="Soporte">Soporte</option>
-              <option value="Recepción">Recepción</option>
-              <option value="Cliente">Cliente</option>
-            </select>
-            <div class="invalid-feedback">Selecciona un rol.</div>
-          </div>
-
-          <button type="submit" class="btn btn-primary w-100">Crear cuenta</button>
-
-          <div id="regMsgOk" class="alert alert-success mt-3 d-none" role="alert">
-            Usuario creado. Ya puedes iniciar sesión.
-          </div>
-
-          <div id="regMsgErr" class="alert alert-danger mt-3 d-none" role="alert">
-            Ese correo ya está registrado.
-          </div>
-
-          <div class="mt-3 d-flex justify-content-between">
-            <a class="text-decoration-none" href="login.html">Volver a login</a>
-            <a class="text-decoration-none" href="index.html">Inicio</a>
-          </div>
-        </form>
-
       </div>
     </div>
   </div>
+</section>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="js/app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/app.js"></script>
+
 </body>
 </html>
