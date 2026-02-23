@@ -401,7 +401,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (st) params.set("status", st);
 
       try {
-        const data = await apiFetch("api/equipos/list.php" + (params.toString() ? "?" + params.toString() : ""));
+        const data = await apiFetch(
+          "api/equipos/list.php" + (params.toString() ? "?" + params.toString() : "")
+        );
+
         const equipos = data.data || [];
 
         equiposBody.innerHTML = equipos.map(x => `
@@ -411,7 +414,17 @@ document.addEventListener("DOMContentLoaded", () => {
             <td class="text-secondary">${x.correo || "-"}</td>
             <td>${x.tipo_equipo} - ${x.modelo}<div class="text-secondary small">${x.fecha_ingreso}</div></td>
             <td><span class="badge ${badgeClass(x.estatus)}">${x.estatus}</span></td>
-            <td><button class="btn btn-sm btn-outline-secondary" disabled>Detalle</button></td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-secondary me-1"
+                href="detalle-equipo.html?folio=${encodeURIComponent(x.folio)}">Detalle</a>
+
+              <button class="btn btn-sm btn-outline-primary"
+                      data-action="status"
+                      data-folio="${x.folio}"
+                      data-estatus="${x.estatus}">
+                Cambiar
+              </button>
+            </td>
           </tr>
         `).join("");
 
@@ -420,11 +433,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       } catch (err) {
         console.error(err);
-        equiposBody.innerHTML = `<tr><td colspan="6" class="text-danger">Error: ${err.message}</td></tr>`;
+        equiposBody.innerHTML = `<tr><td colspan="6" class="text-danger">
+          Error: ${err.message}
+        </td></tr>`;
       }
     }
-
-
 
     render();
     searchInput?.addEventListener("input", render);
@@ -521,6 +534,58 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     `).join("");
   }
+
+  // ====== DETALLE EQUIPO + HISTORIAL ======
+const histBody = document.getElementById("histBody");
+if (histBody) {
+  (async () => {
+    const params = new URLSearchParams(window.location.search);
+    const folio = params.get("folio");
+
+    const err = document.getElementById("histErr");
+    const empty = document.getElementById("histEmpty");
+
+    if (!folio) {
+      err?.classList.remove("d-none");
+      if (err) err.textContent = "Folio no especificado en la URL. Ej: detalle-equipo.html?folio=12";
+      return;
+    }
+
+    try {
+      const det = await apiFetch("api/equipos/get.php?folio=" + encodeURIComponent(folio));
+      const d = det.data;
+
+      document.getElementById("detFolio").textContent = d.folio;
+      document.getElementById("detEstatus").textContent = d.estatus;
+      document.getElementById("detCliente").textContent = d.cliente;
+      document.getElementById("detCorreo").textContent = d.correo;
+      document.getElementById("detEquipo").textContent = `${d.tipo_equipo} - ${d.modelo}`;
+      document.getElementById("detFecha").textContent = d.fecha_ingreso;
+      document.getElementById("detFalla").textContent = d.falla;
+
+      const h = await apiFetch("api/historial/seguimiento.php?folio=" + encodeURIComponent(folio));
+      const rows = h.data || [];
+
+      histBody.innerHTML = rows.map(r => `
+        <tr>
+          <td class="text-secondary">${r.fecha_movimiento}</td>
+          <td><span class="badge ${badgeClass(r.estatus)}">${r.estatus}</span></td>
+          <td>${(r.comentario || "-")}</td>
+        </tr>
+      `).join("");
+
+      if (rows.length === 0) empty?.classList.remove("d-none");
+      else empty?.classList.add("d-none");
+
+    } catch (ex) {
+      console.error(ex);
+      err?.classList.remove("d-none");
+      if (err) err.textContent = ex.message || "Error cargando detalle/historial";
+    }
+  })();
+}
+
+
 });
 
 // ====== NAVEGANET | USUARIOS (CRUD demo) ======
