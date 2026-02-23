@@ -1,6 +1,29 @@
 // ===== Helpers LocalStorage =====
 console.log("✅ app.js cargó");
 
+// ===== API Helper =====
+async function apiFetch(path, options = {}) {
+  const res = await fetch(path, {
+    credentials: "same-origin",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+
+  // Si el server responde pero no es JSON, esto ayuda a ver el error real
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); }
+  catch { throw new Error("Respuesta no JSON: " + text); }
+
+  if (!res.ok || data.ok === false) {
+    throw new Error(data.error || `Error HTTP ${res.status}`);
+  }
+  return data;
+}
+
 const LS = {
   get(key, fallback) {
     try {
@@ -218,50 +241,36 @@ document.addEventListener("DOMContentLoaded", () => {
   const loginMsg = document.getElementById("loginMsg");
 
   if (loginForm) {
-    loginForm.addEventListener("submit", (e) => {
+    loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
+      const emailEl = document.getElementById("email");
+      const passEl = document.getElementById("password");
+
+      const email = (emailEl?.value || "").trim().toLowerCase();
+      const password = (passEl?.value || "").trim();
+
+      if (loginMsg) {
+        loginMsg.classList.remove("d-none");
+        loginMsg.textContent = "Procesando...";
+      }
+
       try {
-        const email = document.getElementById("email");
-        const password = document.getElementById("password");
+        const data = await apiFetch("api/auth/login.php", {
+          method: "POST",
+          body: JSON.stringify({ email, password })
+        });
 
-        // Mensaje visible
-        if (loginMsg) {
-          loginMsg.classList.remove("d-none");
-          loginMsg.textContent = "Procesando...";
-        }
-
-        let ok = true;
-        if (!email?.value.includes("@")) { email?.classList.add("is-invalid"); ok = false; }
-        else { email?.classList.remove("is-invalid"); email?.classList.add("is-valid"); }
-
-        if ((password?.value || "").length < 6) { password?.classList.add("is-invalid"); ok = false; }
-        else { password?.classList.remove("is-invalid"); password?.classList.add("is-valid"); }
-
-        if (!ok) {
-          if (loginMsg) loginMsg.textContent = "Revisa correo/contraseña (mínimo 6 caracteres).";
-          return;
-        }
-
-        const users = LS.get("ferjer_users", []);
-        const emailIn = String(email.value || "").trim().toLowerCase();
-        const passIn = String(password.value || "").trim();
-
-        const user = users.find(u =>
-          String(u.email || "").trim().toLowerCase() === emailIn &&
-          String(u.pass || "").trim() === passIn
-        );
-
-        if (!user) {
-          if (loginMsg) loginMsg.textContent = "Credenciales incorrectas. Prueba admin@ferjer.com / 123456.";
-          return;
-        }
-
-        setSession(user);
+        // data.user viene del PHP
+        setSession({
+          name: data.user.nombre,
+          email: data.user.email,
+          role: data.user.rol
+        });
 
         if (loginMsg) loginMsg.textContent = "Acceso correcto. Redirigiendo...";
 
-        window.location.href = (user.role === "Cliente")
+        window.location.href = (data.user.rol === "Cliente")
           ? "cliente-mis-equipos.html"
           : "dashboard.html";
 
@@ -269,7 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error(err);
         if (loginMsg) {
           loginMsg.classList.remove("d-none");
-          loginMsg.textContent = "Error en JS. Revisa la consola (F12).";
+          loginMsg.textContent = err.message || "Credenciales incorrectas.";
         }
       }
     });
@@ -277,8 +286,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ====== REGISTER ======
   const registerForm = document.getElementById("registerForm");
+
   if (registerForm) {
-    registerForm.addEventListener("submit", (e) => {
+    registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const name = document.getElementById("regName");
@@ -289,57 +299,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const okMsg = document.getElementById("regMsgOk");
       const errMsg = document.getElementById("regMsgErr");
+      okMsg?.classList.add("d-none");
+      errMsg?.classList.add("d-none");
 
-      if (okMsg) okMsg.classList.add("d-none");
-      if (errMsg) errMsg.classList.add("d-none");
-
-      let ok = true;
-
-      if (!name.value.trim()) { name.classList.add("is-invalid"); ok = false; } else name.classList.remove("is-invalid");
-      if (!email.value.includes("@")) { email.classList.add("is-invalid"); ok = false; } else email.classList.remove("is-invalid");
-      if (pass.value.length < 6) { pass.classList.add("is-invalid"); ok = false; } else pass.classList.remove("is-invalid");
-      if (pass2.value !== pass.value || pass2.value.length < 6) { pass2.classList.add("is-invalid"); ok = false; } else pass2.classList.remove("is-invalid");
-      if (!role.value) { role.classList.add("is-invalid"); ok = false; } else role.classList.remove("is-invalid");
-
-      if (!ok) return;
-
-      const users = LS.get("ferjer_users", []);
-      const emailIn = String(email.value || "").trim().toLowerCase();
-
-      const exists = users.some(u =>
-        String(u.email || "").trim().toLowerCase() === emailIn
-      );
-
-      if (exists) {
-        if (errMsg) errMsg.classList.remove("d-none");
+      if ((pass?.value || "") !== (pass2?.value || "")) {
+        errMsg?.classList.remove("d-none");
+        errMsg.textContent = "Las contraseñas no coinciden.";
         return;
       }
 
-      users.push({
-        name: String(name.value || "").trim(),
-        email: String(email.value || "").trim(),
-        pass: String(pass.value || "").trim(),
-        role: role.value
-      });
+      try {
+        await apiFetch("api/auth/register.php", {
+          method: "POST",
+          body: JSON.stringify({
+            nombre: (name?.value || "").trim(),
+            email: (email?.value || "").trim().toLowerCase(),
+            password: (pass?.value || "").trim(),
+            rol: role?.value || "Cliente"
+          })
+        });
 
-      LS.set("ferjer_users", users);
+        okMsg?.classList.remove("d-none");
+        registerForm.reset();
 
-      if (okMsg) okMsg.classList.remove("d-none");
-      registerForm.reset();
+      } catch (err) {
+        console.error(err);
+        errMsg?.classList.remove("d-none");
+        errMsg.textContent = err.message || "No se pudo registrar.";
+      }
     });
   }
 
   // ====== NUEVO EQUIPO ======
   const equipoForm = document.getElementById("equipoForm");
+
   if (equipoForm) {
     const folioInput = document.getElementById("folio");
     const estatusInput = document.getElementById("estatus");
     const saveOk = document.getElementById("saveOk");
 
-    if (folioInput) folioInput.value = nextFolio();
+    if (folioInput) folioInput.value = ""; // folio lo da el servidor
     if (estatusInput) estatusInput.value = "Recibido";
 
-    equipoForm.addEventListener("submit", (e) => {
+    equipoForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const cliente = document.getElementById("cliente");
@@ -353,72 +355,76 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!el || !el.value.trim()) { el?.classList.add("is-invalid"); ok = false; }
         else el.classList.remove("is-invalid");
       });
-
       if (clienteEmail && !clienteEmail.value.includes("@")) { clienteEmail.classList.add("is-invalid"); ok = false; }
-
       if (!ok) return;
 
-      const equipos = getEquipos();
-      const fecha = new Date().toLocaleDateString("es-MX");
+      try {
+        const data = await apiFetch("api/equipos/create.php", {
+          method: "POST",
+          body: JSON.stringify({
+            cliente: cliente.value.trim(),
+            clienteEmail: clienteEmail.value.trim().toLowerCase(),
+            tipo: tipo.value.trim(),
+            modelo: modelo.value.trim(),
+            falla: falla.value.trim()
+          })
+        });
 
-      equipos.unshift({
-        folio: folioInput ? folioInput.value : nextFolio(),
-        cliente: cliente.value.trim(),
-        clienteEmail: clienteEmail.value.trim().toLowerCase(),
-        equipo: `${tipo.value} - ${modelo.value.trim()}`,
-        estatus: "Recibido",
-        fecha,
-        falla: falla.value.trim()
-      });
+        if (folioInput) folioInput.value = data.folio;
+        saveOk?.classList.remove("d-none");
 
-      setEquipos(equipos);
-      if (saveOk) saveOk.classList.remove("d-none");
+        // Redirige a lista (ya en MySQL)
+        setTimeout(() => window.location.href = "equipos.html", 600);
 
-      equipoForm.reset();
-      const est = document.getElementById("estatus");
-      const fol = document.getElementById("folio");
-      if (est) est.value = "Recibido";
-      if (fol) fol.value = nextFolio();
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Error al guardar");
+      }
     });
   }
 
   // ====== EQUIPOS: listar + buscar + filtrar ======
   const equiposBody = document.getElementById("equiposBody");
+
   if (equiposBody) {
     const searchInput = document.getElementById("searchInput");
     const statusFilter = document.getElementById("statusFilter");
     const btnClear = document.getElementById("btnClear");
     const emptyState = document.getElementById("emptyState");
 
-    function render() {
-      const equipos = getEquipos();
-      const q = (searchInput?.value || "").toLowerCase();
-      const st = statusFilter?.value || "";
+    async function render() {
+      const q = (searchInput?.value || "").trim();
+      const st = (statusFilter?.value || "").trim();
 
-      const filtered = equipos.filter(x => {
-        const matchQ =
-          String(x.folio || "").toLowerCase().includes(q) ||
-          String(x.cliente || "").toLowerCase().includes(q) ||
-          String(x.clienteEmail || "").toLowerCase().includes(q) ||
-          String(x.equipo || "").toLowerCase().includes(q);
-        const matchSt = st ? x.estatus === st : true;
-        return matchQ && matchSt;
-      });
+      const params = new URLSearchParams();
+      if (q) params.set("search", q);
+      if (st) params.set("status", st);
 
-      equiposBody.innerHTML = filtered.map(x => `
-        <tr>
-          <td class="fw-semibold">${x.folio}</td>
-          <td>${x.cliente}</td>
-          <td class="text-secondary">${x.clienteEmail || "-"}</td>
-          <td>${x.equipo}<div class="text-secondary small">${x.fecha}</div></td>
-          <td><span class="badge ${badgeClass(x.estatus)}">${x.estatus}</span></td>
-          <td><button class="btn btn-sm btn-outline-secondary" disabled>Detalle</button></td>
-        </tr>
-      `).join("");
+      try {
+        const data = await apiFetch("api/equipos/list.php" + (params.toString() ? "?" + params.toString() : ""));
+        const equipos = data.data || [];
 
-      if (equipos.length === 0) emptyState?.classList.remove("d-none");
-      else emptyState?.classList.add("d-none");
+        equiposBody.innerHTML = equipos.map(x => `
+          <tr>
+            <td class="fw-semibold">${x.folio}</td>
+            <td>${x.cliente}</td>
+            <td class="text-secondary">${x.correo || "-"}</td>
+            <td>${x.tipo_equipo} - ${x.modelo}<div class="text-secondary small">${x.fecha_ingreso}</div></td>
+            <td><span class="badge ${badgeClass(x.estatus)}">${x.estatus}</span></td>
+            <td><button class="btn btn-sm btn-outline-secondary" disabled>Detalle</button></td>
+          </tr>
+        `).join("");
+
+        if (equipos.length === 0) emptyState?.classList.remove("d-none");
+        else emptyState?.classList.add("d-none");
+
+      } catch (err) {
+        console.error(err);
+        equiposBody.innerHTML = `<tr><td colspan="6" class="text-danger">Error: ${err.message}</td></tr>`;
+      }
     }
+
+
 
     render();
     searchInput?.addEventListener("input", render);
@@ -466,23 +472,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ====== CLIENTE: Mis equipos ======
   const myEquiposBody = document.getElementById("myEquiposBody");
-  if (myEquiposBody) {
-    const session = getSession();
-    const email = (session?.email || "").toLowerCase();
-    const equipos = getEquipos().filter(e => (e.clienteEmail || "").toLowerCase() === email);
+    if (myEquiposBody) {
+      (async () => {
+        const session = getSession();
+        const email = (session?.email || "").toLowerCase();
 
-    myEquiposBody.innerHTML = equipos.map(e => `
-      <tr>
-        <td class="fw-semibold">${e.folio}</td>
-        <td>${e.equipo}</td>
-        <td><span class="badge ${badgeClass(e.estatus)}">${e.estatus}</span></td>
-        <td class="text-secondary">${e.fecha}</td>
-      </tr>
-    `).join("");
+        try {
+          const data = await apiFetch("api/equipos/mine.php?email=" + encodeURIComponent(email));
+          const equipos = data.data || [];
 
-    const empty = document.getElementById("myEquiposEmpty");
-    if (equipos.length === 0) empty?.classList.remove("d-none");
-    else empty?.classList.add("d-none");
+          myEquiposBody.innerHTML = equipos.map(e => `
+            <tr>
+              <td class="fw-semibold">${e.folio}</td>
+              <td>${e.equipo}</td>
+              <td><span class="badge ${badgeClass(e.estatus)}">${e.estatus}</span></td>
+              <td class="text-secondary">${e.fecha_ingreso}</td>
+            </tr>
+          `).join("");
+
+          const empty = document.getElementById("myEquiposEmpty");
+          if (equipos.length === 0) empty?.classList.remove("d-none");
+          else empty?.classList.add("d-none");
+
+        } catch (err) {
+          console.error(err);
+          myEquiposBody.innerHTML = `<tr><td colspan="4" class="text-danger">Error: ${err.message}</td></tr>`;
+        }
+    })();
   }
 
   // ====== CLIENTE: Productos Naveganet ======
