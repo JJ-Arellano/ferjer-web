@@ -384,7 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
               <button class="btn btn-sm btn-outline-primary"
                       data-action="openStatus"
-                      data-folio="${x.folio}"
+                      data-folio="${parseInt(x.folio, 10)}"
                       data-estatus="${x.estatus}">
                 Cambiar
               </button>
@@ -434,8 +434,13 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!btn) return;
 
       currentRow = btn.closest("tr");
-      currentFolio = Number(btn.getAttribute("data-folio") || 0);
+      currentFolio = parseInt(btn.getAttribute("data-folio") || "0", 10);
       currentActual = String(btn.getAttribute("data-estatus") || "");
+
+      if (!currentFolio || Number.isNaN(currentFolio)) {
+        alert("Folio inválido (no numérico). Revisa list.php.");
+        return;
+      }
 
       if (smFolio) smFolio.textContent = String(currentFolio || "-");
       if (smActualBadge) {
@@ -460,7 +465,7 @@ document.addEventListener("DOMContentLoaded", () => {
         setModalMsg("danger", "Estatus inválido.");
         return;
       }
-      if (!currentFolio) {
+      if (!currentFolio || Number.isNaN(currentFolio)) {
         setModalMsg("danger", "Folio inválido.");
         return;
       }
@@ -477,16 +482,9 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({ folio: currentFolio, estatus: nuevo, comentario })
         });
 
-        // actualizar UI
-        if (currentRow) {
-          const badge = currentRow.querySelector('[data-role="badge"]');
-          if (badge) {
-            badge.className = `badge ${badgeClass(nuevo)}`;
-            badge.textContent = nuevo;
-          }
-          const openBtn = currentRow.querySelector("button[data-action='openStatus']");
-          if (openBtn) openBtn.setAttribute("data-estatus", nuevo);
-        }
+        // ✅ CLAVE: refresca desde backend para garantizar que SÍ se guardó en BD
+        await renderEquipos();
+        currentActual = nuevo;
 
         modal?.hide();
 
