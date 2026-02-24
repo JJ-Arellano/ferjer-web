@@ -42,8 +42,15 @@ const LS = {
 
 // ===== Sesión =====
 function setSession(user) {
+  // ✅ PARCHE: normaliza role para evitar bugs ("Administrador ", mayúsculas, etc.)
+  const roleClean = String(user.role || "").trim();
+
   localStorage.setItem("ferjer_logged", "1");
-  LS.set("ferjer_session", { name: user.name, email: user.email, role: user.role });
+  LS.set("ferjer_session", {
+    name: user.name,
+    email: user.email,
+    role: roleClean
+  });
 }
 function getSession() { return LS.get("ferjer_session", null); }
 function clearSession() {
@@ -55,10 +62,7 @@ function isLogged() { return localStorage.getItem("ferjer_logged") === "1"; }
 // ===== Roles =====
 function normRole(role) { return String(role || "").trim().toLowerCase(); }
 function isClient(role) { return normRole(role) === "cliente"; }
-function isAdminRole(role) {
-  const r = normRole(role);
-  return r === "administrador" || r === "admin";
-}
+function isAdminRole(role) { return normRole(role) === "administrador"; }
 
 // ===== UI =====
 function badgeClass(status) {
@@ -97,6 +101,7 @@ function renderSidebarNav() {
     return;
   }
 
+  // Admin
   nav.innerHTML = `
     <a class="nav-link rounded-3 px-3 py-2" href="dashboard.html">Dashboard</a>
     <a class="nav-link rounded-3 px-3 py-2" href="equipos.html">Equipos</a>
@@ -125,19 +130,28 @@ function protectRoutes() {
   const role = getSession()?.role || "";
 
   const clientPages = ["cliente-mis-equipos.html", "cliente-productos.html"];
-  const staffPages = [
-    "dashboard.html", "equipos.html", "nuevo-equipo.html",
-    "detalle-equipo.html", "productos-admin.html", "naveganet-usuarios.html"
+
+  // ✅ PARCHE: considera productos-admin y usuarios como páginas admin
+  const adminPages = [
+    "dashboard.html",
+    "equipos.html",
+    "nuevo-equipo.html",
+    "detalle-equipo.html",
+    "productos-admin.html",
+    "naveganet-usuarios.html"
   ];
 
-  if (isClient(role) && staffPages.includes(page)) {
+  if (isClient(role) && adminPages.includes(page)) {
     window.location.href = "cliente-mis-equipos.html";
     return;
   }
+
   if (!isClient(role) && clientPages.includes(page)) {
     window.location.href = "dashboard.html";
     return;
   }
+
+  // solo admin puede entrar a usuarios
   if (page === "naveganet-usuarios.html" && !isAdminRole(role)) {
     window.location.href = "dashboard.html";
   }
@@ -173,11 +187,15 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({ email, password })
         });
 
-        setSession({ name: data.user.nombre, email: data.user.email, role: data.user.rol });
+        // ✅ PARCHE: role trim para que menú y rutas funcionen
+        setSession({
+          name: data.user.nombre,
+          email: data.user.email,
+          role: String(data.user.rol || "").trim()
+        });
 
-        window.location.href = isClient(data.user.rol)
-          ? "cliente-mis-equipos.html"
-          : "dashboard.html";
+        const role = String(data.user.rol || "").trim();
+        window.location.href = isClient(role) ? "cliente-mis-equipos.html" : "dashboard.html";
 
       } catch (err) {
         if (loginMsg) loginMsg.textContent = err.message || "Error al iniciar sesión";
@@ -185,7 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Nuevo equipo (tu API debe crear cliente si no existe, y generar folio int)
+  // Nuevo equipo
   const equipoForm = document.getElementById("equipoForm");
   if (equipoForm) {
     const folioInput = document.getElementById("folio");
@@ -326,10 +344,8 @@ document.addEventListener("DOMContentLoaded", () => {
           })
         });
 
-        // Actualiza estado actual
         sel.setAttribute("data-current", nuevo);
 
-        // Actualiza badge instantáneo
         const row = sel.closest("tr");
         const badge = row?.querySelector('[data-role="badge"]');
         if (badge) {
@@ -374,55 +390,6 @@ document.addEventListener("DOMContentLoaded", () => {
     })();
   }
 
-  // Detalle + historial
-  const histBody = document.getElementById("histBody");
-  if (histBody) {
-    (async () => {
-      const params = new URLSearchParams(window.location.search);
-      const folio = params.get("folio");
-
-      const err = document.getElementById("histErr");
-      const empty = document.getElementById("histEmpty");
-
-      if (!folio) {
-        err?.classList.remove("d-none");
-        if (err) err.textContent = "Folio no especificado en la URL.";
-        return;
-      }
-
-      try {
-        const det = await apiFetch("api/equipos/get.php?folio=" + encodeURIComponent(folio));
-        const d = det.data;
-
-        document.getElementById("detFolio").textContent = d.folio;
-        document.getElementById("detEstatus").textContent = d.estatus;
-        document.getElementById("detCliente").textContent = d.cliente;
-        document.getElementById("detCorreo").textContent = d.correo || "-";
-        document.getElementById("detEquipo").textContent = `${d.tipo_equipo} - ${d.modelo}`;
-        document.getElementById("detFecha").textContent = d.fecha_ingreso;
-        document.getElementById("detFalla").textContent = d.falla;
-
-        const h = await apiFetch("api/historial/seguimiento.php?folio=" + encodeURIComponent(folio));
-        const rows = h.data || [];
-
-        histBody.innerHTML = rows.map(r => `
-          <tr>
-            <td class="text-secondary">${r.fecha_movimiento}</td>
-            <td><span class="badge ${badgeClass(r.estatus)}">${r.estatus}</span></td>
-            <td>${(r.comentario || "-")}</td>
-          </tr>
-        `).join("");
-
-        if (rows.length === 0) empty?.classList.remove("d-none");
-        else empty?.classList.add("d-none");
-
-      } catch (ex) {
-        err?.classList.remove("d-none");
-        if (err) err.textContent = ex.message || "Error cargando detalle/historial";
-      }
-    })();
-  }
-
   // Productos (grid cliente)
   const productsGrid = document.getElementById("productsGrid");
   if (productsGrid) {
@@ -436,8 +403,9 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden">
               <div class="bg-light" style="height:190px;display:flex;align-items:center;justify-content:center;">
                 ${
-                  p.imagen_url
-                    ? `<img src="${p.imagen_url}" alt="${p.nombre}" style="max-height:100%;max-width:100%;object-fit:contain;">`
+                  // ✅ PARCHE: tu tabla es productos.imagen (no imagen_url)
+                  p.imagen
+                    ? `<img src="${p.imagen}" alt="${p.nombre}" style="max-height:100%;max-width:100%;object-fit:contain;">`
                     : `<div class="text-secondary small">Sin imagen</div>`
                 }
               </div>
@@ -452,6 +420,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
           </div>
         `).join("");
+
       } catch (err) {
         productsGrid.innerHTML = `<div class="text-danger">Error: ${err.message}</div>`;
       }
