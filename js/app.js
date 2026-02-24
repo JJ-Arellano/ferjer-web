@@ -42,7 +42,6 @@ const LS = {
 
 // ===== Sesión =====
 function setSession(user) {
-  // ✅ evita bugs por espacios en rol
   const roleClean = String(user.role || "").trim();
   localStorage.setItem("ferjer_logged", "1");
   LS.set("ferjer_session", { name: user.name, email: user.email, role: roleClean });
@@ -145,6 +144,66 @@ function protectRoutes() {
   }
 }
 
+// ===== Modal status (Bootstrap) =====
+function ensureStatusModal() {
+  if (document.getElementById("statusModal")) return;
+
+  document.body.insertAdjacentHTML("beforeend", `
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content rounded-4">
+      <div class="modal-header">
+        <h5 class="modal-title">Cambiar estatus</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mb-2">
+          <div class="small text-secondary">Folio</div>
+          <div class="fw-semibold" id="smFolio">-</div>
+        </div>
+
+        <div class="mb-3">
+          <div class="small text-secondary">Estatus actual</div>
+          <span class="badge" id="smActualBadge">-</span>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Nuevo estatus</label>
+          <select class="form-select" id="smNuevo"></select>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Comentario</label>
+          <textarea class="form-control" id="smComentario" rows="3"
+            placeholder="Ej: Se diagnosticó, se solicitó refacción..."></textarea>
+          <div class="form-text">Este comentario se guarda en el historial.</div>
+        </div>
+
+        <div class="alert d-none mt-3" id="smMsg"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="smGuardar">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+  `);
+}
+
+function setModalMsg(type, text) {
+  const el = document.getElementById("smMsg");
+  if (!el) return;
+  el.className = `alert alert-${type}`;
+  el.textContent = text;
+  el.classList.remove("d-none");
+}
+function clearModalMsg() {
+  document.getElementById("smMsg")?.classList.add("d-none");
+}
+
 // ================= DOMContentLoaded =================
 document.addEventListener("DOMContentLoaded", () => {
   protectRoutes();
@@ -187,34 +246,25 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ===== REGISTER (ARREGLADO) =====
-  // OJO: esto solo se ejecuta si existe el form en la página
+  // ===== REGISTER =====
   const registerForm = document.getElementById("registerForm");
   if (registerForm) {
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const nameEl = document.getElementById("regName");
-      const emailEl = document.getElementById("regEmail");
-      const passEl = document.getElementById("regPass");
-      const pass2El = document.getElementById("regPass2");
-      const roleEl = document.getElementById("regRole");
+      const nombre = (document.getElementById("regName")?.value || "").trim();
+      const email = (document.getElementById("regEmail")?.value || "").trim().toLowerCase();
+      const password = (document.getElementById("regPass")?.value || "").trim();
+      const password2 = (document.getElementById("regPass2")?.value || "").trim();
+
+      let rol = String(document.getElementById("regRole")?.value || "Cliente").trim();
+      const allowedRoles = ["Cliente", "Administrador"];
+      if (!allowedRoles.includes(rol)) rol = "Cliente";
 
       const okMsg = document.getElementById("regMsgOk");
       const errMsg = document.getElementById("regMsgErr");
-
       okMsg?.classList.add("d-none");
       errMsg?.classList.add("d-none");
-
-      const nombre = (nameEl?.value || "").trim();
-      const email = (emailEl?.value || "").trim().toLowerCase();
-      const password = (passEl?.value || "").trim();
-      const password2 = (pass2El?.value || "").trim();
-
-      // ✅ MUY IMPORTANTE: tu ENUM es "Cliente" / "Administrador"
-      let rol = String(roleEl?.value || "Cliente").trim();
-      const allowedRoles = ["Cliente", "Administrador"];
-      if (!allowedRoles.includes(rol)) rol = "Cliente";
 
       if (!nombre || !email || !password) {
         errMsg?.classList.remove("d-none");
@@ -240,7 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         await apiFetch("api/auth/register.php", {
           method: "POST",
-          body: JSON.stringify({ nombre, email, password, rol }) // ✅ claves exactas para tu PHP
+          body: JSON.stringify({ nombre, email, password, rol })
         });
 
         okMsg?.classList.remove("d-none");
@@ -297,7 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ===== EQUIPOS LIST + SELECT STATUS + COMENTARIO =====
+  // ===== EQUIPOS LIST + MODAL STATUS (ADMIN) =====
   const equiposBody = document.getElementById("equiposBody");
   if (equiposBody) {
     const searchInput = document.getElementById("searchInput");
@@ -326,22 +376,18 @@ document.addEventListener("DOMContentLoaded", () => {
             <td class="text-secondary">${x.correo || "-"}</td>
             <td>${x.tipo_equipo} - ${x.modelo}<div class="text-secondary small">${x.fecha_ingreso}</div></td>
 
-            <td>
-              <span class="badge ${badgeClass(x.estatus)}" data-role="badge">${x.estatus}</span>
-            </td>
+            <td><span class="badge ${badgeClass(x.estatus)}" data-role="badge">${x.estatus}</span></td>
 
             <td class="text-end">
               <a class="btn btn-sm btn-outline-secondary me-2"
                  href="detalle-equipo.html?folio=${encodeURIComponent(x.folio)}">Detalle</a>
 
-              <select class="form-select form-select-sm d-inline-block w-auto"
-                      data-action="status"
+              <button class="btn btn-sm btn-outline-primary"
+                      data-action="openStatus"
                       data-folio="${x.folio}"
-                      data-current="${x.estatus}">
-                ${allowed.map(s => `
-                  <option value="${s}" ${s === x.estatus ? "selected" : ""}>${s}</option>
-                `).join("")}
-              </select>
+                      data-estatus="${x.estatus}">
+                Cambiar
+              </button>
             </td>
           </tr>
         `).join("");
@@ -363,53 +409,96 @@ document.addEventListener("DOMContentLoaded", () => {
       renderEquipos();
     });
 
-    // ✅ al cambiar estatus pide comentario
-    equiposBody.addEventListener("change", async (e) => {
-      const sel = e.target.closest('select[data-action="status"]');
-      if (!sel) return;
+    // Modal setup
+    ensureStatusModal();
+    const modalEl = document.getElementById("statusModal");
+    const modal = (window.bootstrap && modalEl) ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
 
-      const folio = Number(sel.getAttribute("data-folio"));
-      const prev = sel.getAttribute("data-current") || "";
-      const nuevo = sel.value;
+    const smFolio = document.getElementById("smFolio");
+    const smActualBadge = document.getElementById("smActualBadge");
+    const smNuevo = document.getElementById("smNuevo");
+    const smComentario = document.getElementById("smComentario");
+    const smGuardar = document.getElementById("smGuardar");
 
-      if (!folio || nuevo === prev) return;
+    if (smNuevo && smNuevo.options.length === 0) {
+      smNuevo.innerHTML = allowed.map(s => `<option value="${s}">${s}</option>`).join("");
+    }
+
+    let currentRow = null;
+    let currentFolio = 0;
+    let currentActual = "";
+
+    // abrir modal
+    equiposBody.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-action='openStatus']");
+      if (!btn) return;
+
+      currentRow = btn.closest("tr");
+      currentFolio = Number(btn.getAttribute("data-folio") || 0);
+      currentActual = String(btn.getAttribute("data-estatus") || "");
+
+      if (smFolio) smFolio.textContent = String(currentFolio || "-");
+      if (smActualBadge) {
+        smActualBadge.className = `badge ${badgeClass(currentActual)}`;
+        smActualBadge.textContent = currentActual || "-";
+      }
+      if (smNuevo) smNuevo.value = currentActual;
+      if (smComentario) smComentario.value = "";
+
+      clearModalMsg();
+      modal?.show();
+    });
+
+    // guardar
+    smGuardar?.addEventListener("click", async () => {
+      clearModalMsg();
+
+      const nuevo = String(smNuevo?.value || "").trim();
+      const comentario = String(smComentario?.value || "").trim() || "Cambio de estatus";
 
       if (!allowed.includes(nuevo)) {
-        alert("Estatus inválido");
-        sel.value = prev;
+        setModalMsg("danger", "Estatus inválido.");
+        return;
+      }
+      if (!currentFolio) {
+        setModalMsg("danger", "Folio inválido.");
+        return;
+      }
+      if (nuevo === currentActual) {
+        setModalMsg("secondary", "No hubo cambios.");
         return;
       }
 
-      // ✅ comentario opcional
-      const comentario = prompt("Comentario del cambio (opcional):", "Cambio de estatus") || "Cambio de estatus";
-
-      sel.disabled = true;
+      smGuardar.disabled = true;
 
       try {
         await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
           method: "POST",
-          body: JSON.stringify({ folio, estatus: nuevo, comentario })
+          body: JSON.stringify({ folio: currentFolio, estatus: nuevo, comentario })
         });
 
-        sel.setAttribute("data-current", nuevo);
-
-        const row = sel.closest("tr");
-        const badge = row?.querySelector('[data-role="badge"]');
-        if (badge) {
-          badge.className = `badge ${badgeClass(nuevo)}`;
-          badge.textContent = nuevo;
+        // actualizar UI
+        if (currentRow) {
+          const badge = currentRow.querySelector('[data-role="badge"]');
+          if (badge) {
+            badge.className = `badge ${badgeClass(nuevo)}`;
+            badge.textContent = nuevo;
+          }
+          const openBtn = currentRow.querySelector("button[data-action='openStatus']");
+          if (openBtn) openBtn.setAttribute("data-estatus", nuevo);
         }
 
+        modal?.hide();
+
       } catch (err) {
-        alert(err.message || "No se pudo actualizar el estatus");
-        sel.value = prev;
+        setModalMsg("danger", err.message || "No se pudo actualizar el estatus");
       } finally {
-        sel.disabled = false;
+        smGuardar.disabled = false;
       }
     });
   }
 
-  // ===== CLIENTE: Mis equipos =====
+  // ===== CLIENTE: Mis equipos (mine.php => equipo) =====
   const myEquiposBody = document.getElementById("myEquiposBody");
   if (myEquiposBody) {
     (async () => {
@@ -420,10 +509,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         myEquiposBody.innerHTML = equipos.map(e => `
           <tr>
-            <td class="fw-semibold">${e.folio}</td>
-            <td>${e.tipo_equipo} - ${e.modelo}</td>
-            <td><span class="badge ${badgeClass(e.estatus)}">${e.estatus}</span></td>
-            <td class="text-secondary">${e.fecha_ingreso}</td>
+            <td class="fw-semibold">${e.folio ?? "-"}</td>
+            <td>${e.equipo ?? "-"}</td>
+            <td><span class="badge ${badgeClass(e.estatus)}">${e.estatus ?? "-"}</span></td>
+            <td class="text-secondary">${e.fecha_ingreso ?? "-"}</td>
           </tr>
         `).join("");
 
@@ -495,9 +584,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const products = data.data || [];
 
         productsGrid.innerHTML = products.map(p => {
-          // ✅ soporta imagen_url o imagen para no romper
           const img = p.imagen_url || p.imagen || "";
-
           return `
             <div class="col-sm-6 col-lg-3">
               <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden">
