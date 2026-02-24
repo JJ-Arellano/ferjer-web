@@ -1,10 +1,15 @@
 console.log("✅ app.js cargó");
 
 // ===== CONFIG ENDPOINT =====
+// Usar la misma estructura que otros endpoints que funcionan
 const EQUIPOS_STATUS_ENDPOINT = "api/equipos/update_status.php";
 
-// ===== API Helper =====
+// ===== API Helper con manejo de rutas =====
 async function apiFetch(path, options = {}) {
+  // Construir la URL completa para depuración
+  const fullUrl = new URL(path, window.location.origin + window.location.pathname).href;
+  console.log(`📡 Fetching: ${fullUrl}`);
+  
   try {
     const res = await fetch(path, {
       credentials: "same-origin",
@@ -15,8 +20,10 @@ async function apiFetch(path, options = {}) {
       }
     });
 
+    console.log(`📥 Status ${res.status} para ${path}`);
+    
     const text = await res.text();
-    console.log(`📥 Respuesta de ${path}:`, text.substring(0, 200)); // Log primeros 200 caracteres
+    console.log(`📥 Respuesta (primeros 200 chars):`, text.substring(0, 200));
     
     let data;
     try { 
@@ -233,6 +240,8 @@ function clearModalMsg() {
 // ================= DOMContentLoaded =================
 document.addEventListener("DOMContentLoaded", () => {
   console.log("📌 DOMContentLoaded");
+  console.log("📍 Current path:", window.location.pathname);
+  console.log("📍 Base URL:", window.location.origin);
   
   protectRoutes();
   renderSidebarNav();
