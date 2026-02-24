@@ -146,6 +146,7 @@ function protectRoutes() {
 
 // ===== Modal status (Bootstrap) =====
 function ensureStatusModal() {
+  console.log("Verificando si existe statusModal...");
   if (document.getElementById("statusModal")) return;
 
   document.body.insertAdjacentHTML("beforeend", `
@@ -191,6 +192,7 @@ function ensureStatusModal() {
   </div>
 </div>
   `);
+  console.log("✅ Modal creado, smGuardar existe?", !!document.getElementById("smGuardar"));
 }
 
 function setModalMsg(type, text) {
@@ -357,6 +359,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const allowed = ["Recibido", "Diagnóstico", "Reparación", "Listo", "Entregado"];
 
+    // Variables para el modal (definidas fuera de las funciones)
+    let currentFolio = 0;
+    let currentActual = "";
+    let modal = null;
+
     async function renderEquipos() {
       const q = (searchInput?.value || "").trim();
       const st = (statusFilter?.value || "").trim();
@@ -384,7 +391,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
               <button class="btn btn-sm btn-outline-primary"
                       data-action="openStatus"
-                      data-folio="${parseInt(x.folio, 10)}"
+                      data-folio="${x.folio}"
                       data-estatus="${x.estatus}">
                 Cambiar
               </button>
@@ -400,7 +407,108 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    // Inicializar el modal
+    ensureStatusModal();
+    
+    // Obtener referencia al modal de Bootstrap
+    const modalEl = document.getElementById("statusModal");
+    if (modalEl && window.bootstrap) {
+      modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    }
+
+    const smFolio = document.getElementById("smFolio");
+    const smActualBadge = document.getElementById("smActualBadge");
+    const smNuevo = document.getElementById("smNuevo");
+    const smComentario = document.getElementById("smComentario");
+    const smGuardar = document.getElementById("smGuardar");
+    const smMsg = document.getElementById("smMsg");
+
+    if (smNuevo && smNuevo.options.length === 0) {
+      smNuevo.innerHTML = allowed.map(s => `<option value="${s}">${s}</option>`).join("");
+    }
+
+    // Evento para abrir modal (usando delegación en equiposBody)
+    equiposBody.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-action='openStatus']");
+      if (!btn) return;
+
+      currentFolio = btn.getAttribute("data-folio");
+      currentActual = btn.getAttribute("data-estatus") || "";
+
+      console.log("Abriendo modal para folio:", currentFolio, "estatus:", currentActual);
+
+      if (!currentFolio) {
+        alert("Folio inválido");
+        return;
+      }
+
+      if (smFolio) smFolio.textContent = currentFolio;
+      if (smActualBadge) {
+        smActualBadge.className = `badge ${badgeClass(currentActual)}`;
+        smActualBadge.textContent = currentActual || "-";
+      }
+      if (smNuevo) smNuevo.value = currentActual;
+      if (smComentario) smComentario.value = "";
+
+      if (smMsg) smMsg.classList.add("d-none");
+      
+      if (modal) modal.show();
+    });
+
+    // Evento para guardar cambios (directamente en el botón, no por delegación)
+    if (smGuardar) {
+      smGuardar.addEventListener("click", async () => {
+        console.log("✅ Click en Guardar detectado (evento directo)");
+        
+        if (smMsg) smMsg.classList.add("d-none");
+
+        const nuevo = String(smNuevo?.value || "").trim();
+        const comentario = String(smComentario?.value || "").trim() || "Cambio de estatus";
+
+        console.log("📌 Datos a guardar:", { currentFolio, nuevo, comentario, currentActual });
+
+        if (!allowed.includes(nuevo)) {
+          setModalMsg("danger", "Estatus inválido.");
+          return;
+        }
+        if (!currentFolio) {
+          setModalMsg("danger", "Folio inválido.");
+          return;
+        }
+        if (nuevo === currentActual) {
+          setModalMsg("secondary", "No hubo cambios.");
+          return;
+        }
+
+        smGuardar.disabled = true;
+
+        try {
+          const resp = await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
+            method: "POST",
+            body: JSON.stringify({ folio: currentFolio, estatus: nuevo, comentario })
+          });
+
+          console.log("✅ Respuesta update_status:", resp);
+
+          // Refrescar la lista
+          await renderEquipos();
+          currentActual = nuevo;
+
+          if (modal) modal.hide();
+
+        } catch (err) {
+          console.error("❌ Error guardando estatus:", err);
+          setModalMsg("danger", err.message || "No se pudo actualizar el estatus");
+        } finally {
+          smGuardar.disabled = false;
+        }
+      });
+    }
+
+    // Cargar equipos inicialmente
     renderEquipos();
+    
+    // Eventos de filtros
     searchInput?.addEventListener("input", renderEquipos);
     statusFilter?.addEventListener("change", renderEquipos);
     btnClear?.addEventListener("click", () => {
@@ -409,100 +517,9 @@ document.addEventListener("DOMContentLoaded", () => {
       renderEquipos();
     });
 
-    // Modal setup
-    ensureStatusModal();
-    const modalEl = document.getElementById("statusModal");
-    const modal = (window.bootstrap && modalEl) ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
-
-    const smFolio = document.getElementById("smFolio");
-    const smActualBadge = document.getElementById("smActualBadge");
-    const smNuevo = document.getElementById("smNuevo");
-    const smComentario = document.getElementById("smComentario");
-    const smGuardar = document.getElementById("smGuardar");
-
-    if (smNuevo && smNuevo.options.length === 0) {
-      smNuevo.innerHTML = allowed.map(s => `<option value="${s}">${s}</option>`).join("");
-    }
-
-    let currentRow = null;
-    let currentFolio = 0;
-    let currentActual = "";
-
-    // abrir modal
-    equiposBody.addEventListener("click", (e) => {
-      const btn = e.target.closest("button[data-action='openStatus']");
-      if (!btn) return;
-
-      currentRow = btn.closest("tr");
-      currentFolio = parseInt(btn.getAttribute("data-folio") || "0", 10);
-      currentActual = String(btn.getAttribute("data-estatus") || "");
-
-      if (!currentFolio || Number.isNaN(currentFolio)) {
-        alert("Folio inválido (no numérico). Revisa list.php.");
-        return;
-      }
-
-      if (smFolio) smFolio.textContent = String(currentFolio || "-");
-      if (smActualBadge) {
-        smActualBadge.className = `badge ${badgeClass(currentActual)}`;
-        smActualBadge.textContent = currentActual || "-";
-      }
-      if (smNuevo) smNuevo.value = currentActual;
-      if (smComentario) smComentario.value = "";
-
-      clearModalMsg();
-      modal?.show();
-    });
-
-    // guardar
-    smGuardar?.addEventListener("click", async () => {
-      clearModalMsg();
-
-      const nuevo = String(smNuevo?.value || "").trim();
-      const comentario = String(smComentario?.value || "").trim() || "Cambio de estatus";
-
-      if (!allowed.includes(nuevo)) {
-        setModalMsg("danger", "Estatus inválido.");
-        return;
-      }
-      if (!currentFolio || Number.isNaN(currentFolio)) {
-        setModalMsg("danger", "Folio inválido.");
-        return;
-      }
-      if (nuevo === currentActual) {
-        setModalMsg("secondary", "No hubo cambios.");
-        return;
-      }
-
-      smGuardar.disabled = true;
-
-      try {
-        // ✅ pide confirmación real del backend
-        const resp = await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
-          method: "POST",
-          body: JSON.stringify({ folio: currentFolio, estatus: nuevo, comentario })
-        });
-
-        // ✅ si el backend no confirma el mismo estatus, no lo damos por guardado
-        if (resp?.estatus && String(resp.estatus) !== String(nuevo)) {
-          throw new Error("El servidor no confirmó el estatus guardado.");
-        }
-
-        // ✅ refresca desde backend para garantizar que SÍ se guardó en BD
-        await renderEquipos();
-        currentActual = nuevo;
-
-        modal?.hide();
-
-      } catch (err) {
-        setModalMsg("danger", err.message || "No se pudo actualizar el estatus");
-      } finally {
-        smGuardar.disabled = false;
-      }
-    });
   }
 
-  // ===== CLIENTE: Mis equipos (mine.php => equipo) =====
+  // ===== CLIENTE: Mis equipos =====
   const myEquiposBody = document.getElementById("myEquiposBody");
   if (myEquiposBody) {
     (async () => {
@@ -511,7 +528,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await apiFetch("api/equipos/mine.php?email=" + encodeURIComponent(email));
         const equipos = data.data || [];
 
-        // ✅ mine.php devuelve: folio, equipo, estatus, fecha_ingreso
         myEquiposBody.innerHTML = equipos.map(e => `
           <tr>
             <td class="fw-semibold">${e.folio ?? "-"}</td>
