@@ -359,7 +359,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const allowed = ["Recibido", "Diagnóstico", "Reparación", "Listo", "Entregado"];
 
-    // Variables para el modal (definidas fuera de las funciones)
+    // Variables para el modal
     let currentFolio = 0;
     let currentActual = "";
     let modal = null;
@@ -427,7 +427,7 @@ document.addEventListener("DOMContentLoaded", () => {
       smNuevo.innerHTML = allowed.map(s => `<option value="${s}">${s}</option>`).join("");
     }
 
-    // Evento para abrir modal (usando delegación en equiposBody)
+    // Evento para abrir modal
     equiposBody.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-action='openStatus']");
       if (!btn) return;
@@ -435,7 +435,7 @@ document.addEventListener("DOMContentLoaded", () => {
       currentFolio = btn.getAttribute("data-folio");
       currentActual = btn.getAttribute("data-estatus") || "";
 
-      console.log("Abriendo modal para folio:", currentFolio, "estatus:", currentActual);
+      console.log("Abriendo modal - Folio:", currentFolio, "Tipo:", typeof currentFolio, "Estatus:", currentActual);
 
       if (!currentFolio) {
         alert("Folio inválido");
@@ -455,26 +455,43 @@ document.addEventListener("DOMContentLoaded", () => {
       if (modal) modal.show();
     });
 
-    // Evento para guardar cambios (directamente en el botón, no por delegación)
+    // Evento para guardar cambios
     if (smGuardar) {
       smGuardar.addEventListener("click", async () => {
-        console.log("✅ Click en Guardar detectado (evento directo)");
+        console.log("✅ Click en Guardar detectado");
         
         if (smMsg) smMsg.classList.add("d-none");
 
         const nuevo = String(smNuevo?.value || "").trim();
         const comentario = String(smComentario?.value || "").trim() || "Cambio de estatus";
 
-        console.log("📌 Datos a guardar:", { currentFolio, nuevo, comentario, currentActual });
+        console.log("📌 Datos a procesar:", { 
+          folio: currentFolio, 
+          tipo_folio: typeof currentFolio,
+          nuevo, 
+          comentario, 
+          actual: currentActual 
+        });
 
+        // Validaciones
         if (!allowed.includes(nuevo)) {
           setModalMsg("danger", "Estatus inválido.");
           return;
         }
+        
         if (!currentFolio) {
           setModalMsg("danger", "Folio inválido.");
           return;
         }
+
+        // Convertir folio a número (importante para PHP)
+        const folioNumerico = parseInt(currentFolio, 10);
+        
+        if (isNaN(folioNumerico) || folioNumerico <= 0) {
+          setModalMsg("danger", "El folio debe ser un número válido");
+          return;
+        }
+
         if (nuevo === currentActual) {
           setModalMsg("secondary", "No hubo cambios.");
           return;
@@ -483,21 +500,31 @@ document.addEventListener("DOMContentLoaded", () => {
         smGuardar.disabled = true;
 
         try {
-          const resp = await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
-            method: "POST",
-            body: JSON.stringify({ folio: currentFolio, estatus: nuevo, comentario })
+          console.log("📤 Enviando al servidor:", { 
+            folio: folioNumerico, 
+            estatus: nuevo, 
+            comentario 
           });
 
-          console.log("✅ Respuesta update_status:", resp);
+          const resp = await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
+            method: "POST",
+            body: JSON.stringify({ 
+              folio: folioNumerico,  // Ahora enviamos número
+              estatus: nuevo, 
+              comentario 
+            })
+          });
 
-          // Refrescar la lista
+          console.log("✅ Respuesta del servidor:", resp);
+
+          // Actualizar la lista
           await renderEquipos();
           currentActual = nuevo;
 
           if (modal) modal.hide();
 
         } catch (err) {
-          console.error("❌ Error guardando estatus:", err);
+          console.error("❌ Error en la petición:", err);
           setModalMsg("danger", err.message || "No se pudo actualizar el estatus");
         } finally {
           smGuardar.disabled = false;
@@ -516,7 +543,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (statusFilter) statusFilter.value = "";
       renderEquipos();
     });
-
   }
 
   // ===== CLIENTE: Mis equipos =====
