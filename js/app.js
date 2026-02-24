@@ -42,15 +42,10 @@ const LS = {
 
 // ===== Sesión =====
 function setSession(user) {
-  // ✅ PARCHE: normaliza role para evitar bugs ("Administrador ", mayúsculas, etc.)
+  // ✅ evita bugs por espacios en rol
   const roleClean = String(user.role || "").trim();
-
   localStorage.setItem("ferjer_logged", "1");
-  LS.set("ferjer_session", {
-    name: user.name,
-    email: user.email,
-    role: roleClean
-  });
+  LS.set("ferjer_session", { name: user.name, email: user.email, role: roleClean });
 }
 function getSession() { return LS.get("ferjer_session", null); }
 function clearSession() {
@@ -62,7 +57,10 @@ function isLogged() { return localStorage.getItem("ferjer_logged") === "1"; }
 // ===== Roles =====
 function normRole(role) { return String(role || "").trim().toLowerCase(); }
 function isClient(role) { return normRole(role) === "cliente"; }
-function isAdminRole(role) { return normRole(role) === "administrador"; }
+function isAdminRole(role) {
+  const r = normRole(role);
+  return r === "administrador" || r === "admin";
+}
 
 // ===== UI =====
 function badgeClass(status) {
@@ -101,7 +99,6 @@ function renderSidebarNav() {
     return;
   }
 
-  // Admin
   nav.innerHTML = `
     <a class="nav-link rounded-3 px-3 py-2" href="dashboard.html">Dashboard</a>
     <a class="nav-link rounded-3 px-3 py-2" href="equipos.html">Equipos</a>
@@ -130,28 +127,19 @@ function protectRoutes() {
   const role = getSession()?.role || "";
 
   const clientPages = ["cliente-mis-equipos.html", "cliente-productos.html"];
-
-  // ✅ PARCHE: considera productos-admin y usuarios como páginas admin
-  const adminPages = [
-    "dashboard.html",
-    "equipos.html",
-    "nuevo-equipo.html",
-    "detalle-equipo.html",
-    "productos-admin.html",
-    "naveganet-usuarios.html"
+  const staffPages = [
+    "dashboard.html", "equipos.html", "nuevo-equipo.html",
+    "detalle-equipo.html", "productos-admin.html", "naveganet-usuarios.html"
   ];
 
-  if (isClient(role) && adminPages.includes(page)) {
+  if (isClient(role) && staffPages.includes(page)) {
     window.location.href = "cliente-mis-equipos.html";
     return;
   }
-
   if (!isClient(role) && clientPages.includes(page)) {
     window.location.href = "dashboard.html";
     return;
   }
-
-  // solo admin puede entrar a usuarios
   if (page === "naveganet-usuarios.html" && !isAdminRole(role)) {
     window.location.href = "dashboard.html";
   }
@@ -168,7 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "login.html";
   });
 
-  // Login
+  // ===== LOGIN =====
   const loginForm = document.getElementById("loginForm");
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
@@ -187,15 +175,11 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({ email, password })
         });
 
-        // ✅ PARCHE: role trim para que menú y rutas funcionen
-        setSession({
-          name: data.user.nombre,
-          email: data.user.email,
-          role: String(data.user.rol || "").trim()
-        });
+        setSession({ name: data.user.nombre, email: data.user.email, role: data.user.rol });
 
-        const role = String(data.user.rol || "").trim();
-        window.location.href = isClient(role) ? "cliente-mis-equipos.html" : "dashboard.html";
+        window.location.href = isClient(data.user.rol)
+          ? "cliente-mis-equipos.html"
+          : "dashboard.html";
 
       } catch (err) {
         if (loginMsg) loginMsg.textContent = err.message || "Error al iniciar sesión";
@@ -203,7 +187,74 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Nuevo equipo
+  // ===== REGISTER (ARREGLADO) =====
+  // OJO: esto solo se ejecuta si existe el form en la página
+  const registerForm = document.getElementById("registerForm");
+  if (registerForm) {
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const nameEl = document.getElementById("regName");
+      const emailEl = document.getElementById("regEmail");
+      const passEl = document.getElementById("regPass");
+      const pass2El = document.getElementById("regPass2");
+      const roleEl = document.getElementById("regRole");
+
+      const okMsg = document.getElementById("regMsgOk");
+      const errMsg = document.getElementById("regMsgErr");
+
+      okMsg?.classList.add("d-none");
+      errMsg?.classList.add("d-none");
+
+      const nombre = (nameEl?.value || "").trim();
+      const email = (emailEl?.value || "").trim().toLowerCase();
+      const password = (passEl?.value || "").trim();
+      const password2 = (pass2El?.value || "").trim();
+
+      // ✅ MUY IMPORTANTE: tu ENUM es "Cliente" / "Administrador"
+      let rol = String(roleEl?.value || "Cliente").trim();
+      const allowedRoles = ["Cliente", "Administrador"];
+      if (!allowedRoles.includes(rol)) rol = "Cliente";
+
+      if (!nombre || !email || !password) {
+        errMsg?.classList.remove("d-none");
+        if (errMsg) errMsg.textContent = "Faltan datos.";
+        return;
+      }
+      if (!email.includes("@")) {
+        errMsg?.classList.remove("d-none");
+        if (errMsg) errMsg.textContent = "Email inválido.";
+        return;
+      }
+      if (password.length < 6) {
+        errMsg?.classList.remove("d-none");
+        if (errMsg) errMsg.textContent = "La contraseña debe tener al menos 6 caracteres.";
+        return;
+      }
+      if (password !== password2) {
+        errMsg?.classList.remove("d-none");
+        if (errMsg) errMsg.textContent = "Las contraseñas no coinciden.";
+        return;
+      }
+
+      try {
+        await apiFetch("api/auth/register.php", {
+          method: "POST",
+          body: JSON.stringify({ nombre, email, password, rol }) // ✅ claves exactas para tu PHP
+        });
+
+        okMsg?.classList.remove("d-none");
+        if (okMsg) okMsg.textContent = "Usuario creado ✅";
+        registerForm.reset();
+
+      } catch (err) {
+        errMsg?.classList.remove("d-none");
+        if (errMsg) errMsg.textContent = err.message || "No se pudo crear el usuario.";
+      }
+    });
+  }
+
+  // ===== NUEVO EQUIPO =====
   const equipoForm = document.getElementById("equipoForm");
   if (equipoForm) {
     const folioInput = document.getElementById("folio");
@@ -246,7 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ===== EQUIPOS LIST + SELECT STATUS (sin escribir) =====
+  // ===== EQUIPOS LIST + SELECT STATUS + COMENTARIO =====
   const equiposBody = document.getElementById("equiposBody");
   if (equiposBody) {
     const searchInput = document.getElementById("searchInput");
@@ -254,7 +305,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnClear = document.getElementById("btnClear");
     const emptyState = document.getElementById("emptyState");
 
-    // Según tu tabla estados.nombre
     const allowed = ["Recibido", "Diagnóstico", "Reparación", "Listo", "Entregado"];
 
     async function renderEquipos() {
@@ -277,9 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <td>${x.tipo_equipo} - ${x.modelo}<div class="text-secondary small">${x.fecha_ingreso}</div></td>
 
             <td>
-              <span class="badge ${badgeClass(x.estatus)}" data-role="badge">
-                ${x.estatus}
-              </span>
+              <span class="badge ${badgeClass(x.estatus)}" data-role="badge">${x.estatus}</span>
             </td>
 
             <td class="text-end">
@@ -315,12 +363,12 @@ document.addEventListener("DOMContentLoaded", () => {
       renderEquipos();
     });
 
-    // Listener cambio estatus (SELECT)
+    // ✅ al cambiar estatus pide comentario
     equiposBody.addEventListener("change", async (e) => {
       const sel = e.target.closest('select[data-action="status"]');
       if (!sel) return;
 
-      const folio = Number(sel.getAttribute("data-folio")); // tu PHP castea a int
+      const folio = Number(sel.getAttribute("data-folio"));
       const prev = sel.getAttribute("data-current") || "";
       const nuevo = sel.value;
 
@@ -332,16 +380,15 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // ✅ comentario opcional
+      const comentario = prompt("Comentario del cambio (opcional):", "Cambio de estatus") || "Cambio de estatus";
+
       sel.disabled = true;
 
       try {
         await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
           method: "POST",
-          body: JSON.stringify({
-            folio: folio,
-            estatus: nuevo,
-            comentario: "Cambio de estatus desde panel"
-          })
+          body: JSON.stringify({ folio, estatus: nuevo, comentario })
         });
 
         sel.setAttribute("data-current", nuevo);
@@ -362,7 +409,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Cliente: Mis equipos
+  // ===== CLIENTE: Mis equipos =====
   const myEquiposBody = document.getElementById("myEquiposBody");
   if (myEquiposBody) {
     (async () => {
@@ -390,7 +437,56 @@ document.addEventListener("DOMContentLoaded", () => {
     })();
   }
 
-  // Productos (grid cliente)
+  // ===== DETALLE + HISTORIAL =====
+  const histBody = document.getElementById("histBody");
+  if (histBody) {
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const folio = params.get("folio");
+
+      const err = document.getElementById("histErr");
+      const empty = document.getElementById("histEmpty");
+
+      if (!folio) {
+        err?.classList.remove("d-none");
+        if (err) err.textContent = "Folio no especificado en la URL.";
+        return;
+      }
+
+      try {
+        const det = await apiFetch("api/equipos/get.php?folio=" + encodeURIComponent(folio));
+        const d = det.data;
+
+        document.getElementById("detFolio").textContent = d.folio;
+        document.getElementById("detEstatus").textContent = d.estatus;
+        document.getElementById("detCliente").textContent = d.cliente;
+        document.getElementById("detCorreo").textContent = d.correo || "-";
+        document.getElementById("detEquipo").textContent = `${d.tipo_equipo} - ${d.modelo}`;
+        document.getElementById("detFecha").textContent = d.fecha_ingreso;
+        document.getElementById("detFalla").textContent = d.falla;
+
+        const h = await apiFetch("api/historial/seguimiento.php?folio=" + encodeURIComponent(folio));
+        const rows = h.data || [];
+
+        histBody.innerHTML = rows.map(r => `
+          <tr>
+            <td class="text-secondary">${r.fecha_movimiento}</td>
+            <td><span class="badge ${badgeClass(r.estatus)}">${r.estatus}</span></td>
+            <td>${(r.comentario || "-")}</td>
+          </tr>
+        `).join("");
+
+        if (rows.length === 0) empty?.classList.remove("d-none");
+        else empty?.classList.add("d-none");
+
+      } catch (ex) {
+        err?.classList.remove("d-none");
+        if (err) err.textContent = ex.message || "Error cargando detalle/historial";
+      }
+    })();
+  }
+
+  // ===== Productos (grid cliente) =====
   const productsGrid = document.getElementById("productsGrid");
   if (productsGrid) {
     (async () => {
@@ -398,28 +494,32 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await apiFetch("api/productos/list.php");
         const products = data.data || [];
 
-        productsGrid.innerHTML = products.map(p => `
-          <div class="col-sm-6 col-lg-3">
-            <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden">
-              <div class="bg-light" style="height:190px;display:flex;align-items:center;justify-content:center;">
-                ${
-                  // ✅ PARCHE: tu tabla es productos.imagen (no imagen_url)
-                  p.imagen
-                    ? `<img src="${p.imagen}" alt="${p.nombre}" style="max-height:100%;max-width:100%;object-fit:contain;">`
-                    : `<div class="text-secondary small">Sin imagen</div>`
-                }
-              </div>
-              <div class="card-body">
-                <div class="text-secondary small">ID: ${p.id_producto}</div>
-                <h6 class="fw-semibold mt-1 mb-2">${p.nombre}</h6>
-                <div class="d-flex align-items-center justify-content-between">
-                  <div class="fw-bold">$${Number(p.precio).toFixed(2)} MXN</div>
-                  <span class="badge text-bg-light border">Stock: ${p.stock}</span>
+        productsGrid.innerHTML = products.map(p => {
+          // ✅ soporta imagen_url o imagen para no romper
+          const img = p.imagen_url || p.imagen || "";
+
+          return `
+            <div class="col-sm-6 col-lg-3">
+              <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden">
+                <div class="bg-light" style="height:190px;display:flex;align-items:center;justify-content:center;">
+                  ${
+                    img
+                      ? `<img src="${img}" alt="${p.nombre}" style="max-height:100%;max-width:100%;object-fit:contain;">`
+                      : `<div class="text-secondary small">Sin imagen</div>`
+                  }
+                </div>
+                <div class="card-body">
+                  <div class="text-secondary small">ID: ${p.id_producto}</div>
+                  <h6 class="fw-semibold mt-1 mb-2">${p.nombre}</h6>
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="fw-bold">$${Number(p.precio).toFixed(2)} MXN</div>
+                    <span class="badge text-bg-light border">Stock: ${p.stock}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        `).join("");
+          `;
+        }).join("");
 
       } catch (err) {
         productsGrid.innerHTML = `<div class="text-danger">Error: ${err.message}</div>`;
