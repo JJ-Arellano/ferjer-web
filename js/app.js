@@ -477,12 +477,18 @@ document.addEventListener("DOMContentLoaded", () => {
       smGuardar.disabled = true;
 
       try {
-        await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
+        // ✅ pide confirmación real del backend
+        const resp = await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
           method: "POST",
           body: JSON.stringify({ folio: currentFolio, estatus: nuevo, comentario })
         });
 
-        // ✅ CLAVE: refresca desde backend para garantizar que SÍ se guardó en BD
+        // ✅ si el backend no confirma el mismo estatus, no lo damos por guardado
+        if (resp?.estatus && String(resp.estatus) !== String(nuevo)) {
+          throw new Error("El servidor no confirmó el estatus guardado.");
+        }
+
+        // ✅ refresca desde backend para garantizar que SÍ se guardó en BD
         await renderEquipos();
         currentActual = nuevo;
 
@@ -505,6 +511,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await apiFetch("api/equipos/mine.php?email=" + encodeURIComponent(email));
         const equipos = data.data || [];
 
+        // ✅ mine.php devuelve: folio, equipo, estatus, fecha_ingreso
         myEquiposBody.innerHTML = equipos.map(e => `
           <tr>
             <td class="fw-semibold">${e.folio ?? "-"}</td>

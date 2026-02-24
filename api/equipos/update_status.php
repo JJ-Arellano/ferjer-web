@@ -16,28 +16,43 @@ try {
 
   $st = $pdo->prepare("SELECT id_equipo FROM equipos WHERE folio=? LIMIT 1");
   $st->execute([$folio]);
-  $eq = $st->fetch();
-  if (!$eq) json_err("Folio no encontrado", 404);
+  $eq = $st->fetch(PDO::FETCH_ASSOC);
+  if (!$eq) { $pdo->rollBack(); json_err("Folio no encontrado", 404); }
 
   $id_equipo = (int)$eq["id_equipo"];
 
   $stE = $pdo->prepare("SELECT id_estado FROM estados WHERE nombre=? LIMIT 1");
   $stE->execute([$estatus]);
-  $es = $stE->fetch();
-  if (!$es) json_err("Estatus inválido", 400);
+  $es = $stE->fetch(PDO::FETCH_ASSOC);
+  if (!$es) { $pdo->rollBack(); json_err("Estatus inválido", 400); }
 
   $id_estado = (int)$es["id_estado"];
 
-  $pdo->prepare("UPDATE equipos SET id_estado=? WHERE id_equipo=?")->execute([$id_estado, $id_equipo]);
+  $upd = $pdo->prepare("UPDATE equipos SET id_estado=? WHERE id_equipo=?");
+  $upd->execute([$id_estado, $id_equipo]);
 
-  $pdo->prepare("
+  // ✅ si no cambió nada, no lo “damos por guardado”
+  if ($upd->rowCount() !== 1) {
+    $pdo->rollBack();
+    json_err("No se actualizó el equipo (rowCount=0). Revisa folio/id_equipo.", 500);
+  }
+
+  $ins = $pdo->prepare("
     INSERT INTO historial_orden (id_equipo, id_estado, comentario)
     VALUES (?,?,?)
-  ")->execute([$id_equipo, $id_estado, $comentario]);
+  ");
+  $ins->execute([$id_equipo, $id_estado, $comentario]);
 
   $pdo->commit();
-  json_ok(["msg" => "Actualizado"]);
+
+  // ✅ devuelve lo guardado
+  json_ok([
+    "msg" => "Actualizado",
+    "folio" => $folio,
+    "estatus" => $estatus,
+    "id_estado" => $id_estado
+  ]);
 } catch (Exception $e) {
-  $pdo->rollBack();
+  if ($pdo->inTransaction()) $pdo->rollBack();
   json_err("Error al actualizar", 500);
 }

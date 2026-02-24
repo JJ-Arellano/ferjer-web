@@ -34,35 +34,47 @@
         <div class="col-lg-4">
           <div class="card shadow-sm border-0 rounded-4">
             <div class="card-body">
-              <h2 class="h6 fw-semibold">Agregar producto</h2>
+             <h2 class="h6 fw-semibold">Agregar producto</h2>
+             <form id="prodForm"> ... </form>
+<div class="d-flex align-items-center justify-content-between">
+  <h2 class="h6 fw-semibold mb-0">Productos</h2>
+  <button class="btn btn-primary btn-sm"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#collapseProdForm"
+          aria-expanded="false"
+          aria-controls="collapseProdForm">
+    + Agregar
+  </button>
+</div>
 
-              <form id="prodForm">
-                <div class="mb-2">
-                  <label class="form-label">Nombre</label>
-                  <input class="form-control" id="pNombre" required>
-                </div>
+<div class="collapse mt-3" id="collapseProdForm">
+  <form id="prodForm">
+    <div class="mb-2">
+      <label class="form-label">Nombre</label>
+      <input class="form-control" id="pNombre" required>
+    </div>
 
-                <div class="mb-2">
-                  <label class="form-label">Precio</label>
-                  <input class="form-control" id="pPrecio" type="number" step="0.01" min="0" required>
-                </div>
+    <div class="mb-2">
+      <label class="form-label">Precio</label>
+      <input class="form-control" id="pPrecio" type="number" step="0.01" min="0" required>
+    </div>
 
-                <div class="mb-2">
-                  <label class="form-label">Stock</label>
-                  <input class="form-control" id="pStock" type="number" min="0" required>
-                </div>
+    <div class="mb-2">
+      <label class="form-label">Stock</label>
+      <input class="form-control" id="pStock" type="number" min="0" required>
+    </div>
 
-                <div class="mb-3">
-                  <label class="form-label">Imagen</label>
-                  <input class="form-control" id="pImg" type="file" accept=".jpg,.jpeg,.png,.webp">
-                </div>
+    <div class="mb-3">
+      <label class="form-label">Imagen</label>
+      <input class="form-control" id="pImg" type="file" accept=".jpg,.jpeg,.png,.webp">
+    </div>
 
-                <div id="prodMsg" class="alert d-none"></div>
+    <div id="prodMsg" class="alert d-none"></div>
 
-                <button class="btn btn-primary w-100" type="submit">Guardar</button>
-              </form>
-
-            </div>
+    <button class="btn btn-success w-100" type="submit">Guardar</button>
+  </form>
+</div>
           </div>
         </div>
 
