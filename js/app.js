@@ -1,5 +1,8 @@
 console.log("✅ app.js cargó");
 
+// ===== CONFIG ENDPOINT =====
+const EQUIPOS_STATUS_ENDPOINT = "api/equipos/update_status.php";
+
 // ===== API Helper =====
 async function apiFetch(path, options = {}) {
   const res = await fetch(path, {
@@ -63,7 +66,7 @@ function badgeClass(status) {
   if (status === "Reparación") return "text-bg-primary";
   if (status === "Listo") return "text-bg-success";
   if (status === "Entregado") return "text-bg-dark";
-  return "text-bg-secondary";
+  return "text-bg-secondary"; // Recibido
 }
 
 // ===== Menú por rol =====
@@ -182,7 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Nuevo equipo
+  // Nuevo equipo (tu API debe crear cliente si no existe, y generar folio int)
   const equipoForm = document.getElementById("equipoForm");
   if (equipoForm) {
     const folioInput = document.getElementById("folio");
@@ -225,13 +228,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Equipos list + cambiar estatus
+  // ===== EQUIPOS LIST + SELECT STATUS (sin escribir) =====
   const equiposBody = document.getElementById("equiposBody");
   if (equiposBody) {
     const searchInput = document.getElementById("searchInput");
     const statusFilter = document.getElementById("statusFilter");
     const btnClear = document.getElementById("btnClear");
     const emptyState = document.getElementById("emptyState");
+
+    // Según tu tabla estados.nombre
+    const allowed = ["Recibido", "Diagnóstico", "Reparación", "Listo", "Entregado"];
 
     async function renderEquipos() {
       const q = (searchInput?.value || "").trim();
@@ -251,17 +257,25 @@ document.addEventListener("DOMContentLoaded", () => {
             <td>${x.cliente}</td>
             <td class="text-secondary">${x.correo || "-"}</td>
             <td>${x.tipo_equipo} - ${x.modelo}<div class="text-secondary small">${x.fecha_ingreso}</div></td>
-            <td><span class="badge ${badgeClass(x.estatus)}">${x.estatus}</span></td>
+
+            <td>
+              <span class="badge ${badgeClass(x.estatus)}" data-role="badge">
+                ${x.estatus}
+              </span>
+            </td>
+
             <td class="text-end">
-              <a class="btn btn-sm btn-outline-secondary me-1"
+              <a class="btn btn-sm btn-outline-secondary me-2"
                  href="detalle-equipo.html?folio=${encodeURIComponent(x.folio)}">Detalle</a>
 
-              <button class="btn btn-sm btn-outline-primary"
+              <select class="form-select form-select-sm d-inline-block w-auto"
                       data-action="status"
                       data-folio="${x.folio}"
-                      data-estatus="${x.estatus}">
-                Cambiar
-              </button>
+                      data-current="${x.estatus}">
+                ${allowed.map(s => `
+                  <option value="${s}" ${s === x.estatus ? "selected" : ""}>${s}</option>
+                `).join("")}
+              </select>
             </td>
           </tr>
         `).join("");
@@ -283,30 +297,51 @@ document.addEventListener("DOMContentLoaded", () => {
       renderEquipos();
     });
 
-    equiposBody.addEventListener("click", async (e) => {
-      const btn = e.target.closest("button");
-      if (!btn) return;
-      if (btn.getAttribute("data-action") !== "status") return;
+    // Listener cambio estatus (SELECT)
+    equiposBody.addEventListener("change", async (e) => {
+      const sel = e.target.closest('select[data-action="status"]');
+      if (!sel) return;
 
-      const folio = btn.getAttribute("data-folio");
-      const actual = btn.getAttribute("data-estatus") || "";
+      const folio = Number(sel.getAttribute("data-folio")); // tu PHP castea a int
+      const prev = sel.getAttribute("data-current") || "";
+      const nuevo = sel.value;
 
-      const allowed = ["Recibido", "Diagnóstico", "Reparación", "Listo", "Entregado"];
-      const nuevo = prompt("Nuevo estatus:\n" + allowed.join("\n"), actual);
-      if (!nuevo) return;
+      if (!folio || nuevo === prev) return;
 
-      const limpio = nuevo.trim();
-      if (!allowed.includes(limpio)) return alert("Estatus inválido: " + allowed.join(", "));
-      if (limpio === actual) return;
+      if (!allowed.includes(nuevo)) {
+        alert("Estatus inválido");
+        sel.value = prev;
+        return;
+      }
+
+      sel.disabled = true;
 
       try {
-        await apiFetch("api/equipos/update-status.php", {
+        await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
           method: "POST",
-          body: JSON.stringify({ folio, estatus: limpio })
+          body: JSON.stringify({
+            folio: folio,
+            estatus: nuevo,
+            comentario: "Cambio de estatus desde panel"
+          })
         });
-        renderEquipos();
+
+        // Actualiza estado actual
+        sel.setAttribute("data-current", nuevo);
+
+        // Actualiza badge instantáneo
+        const row = sel.closest("tr");
+        const badge = row?.querySelector('[data-role="badge"]');
+        if (badge) {
+          badge.className = `badge ${badgeClass(nuevo)}`;
+          badge.textContent = nuevo;
+        }
+
       } catch (err) {
         alert(err.message || "No se pudo actualizar el estatus");
+        sel.value = prev;
+      } finally {
+        sel.disabled = false;
       }
     });
   }
