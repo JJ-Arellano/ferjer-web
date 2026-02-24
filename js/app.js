@@ -103,23 +103,47 @@ function nextFolio() {
 }
 
 // ====== Productos Naveganet (demo) ======
-function seedProductsIfEmpty() {
-  const existing = LS.get("naveganet_products", null);
-  if (existing && Array.isArray(existing) && existing.length) return;
 
-  const products = [
-    { id: "P-001", name: "Paquete Internet 50 Mbps", desc: "Ideal para hogar (streaming y trabajo).", price: 399 },
-    { id: "P-002", name: "Paquete Internet 100 Mbps", desc: "Mejor rendimiento para varios dispositivos.", price: 549 },
-    { id: "P-003", name: "Extensor WiFi", desc: "Mejora cobertura inalámbrica en el hogar.", price: 299 },
-    { id: "P-004", name: "Soporte Técnico Remoto", desc: "Asistencia por llamada/PC remota (1 hora).", price: 250 },
-    { id: "P-005", name: "Mantenimiento Preventivo", desc: "Limpieza y optimización del equipo.", price: 350 },
-    { id: "P-006", name: "Reinstalación de Sistema", desc: "Formateo + instalación + drivers (demo).", price: 600 },
-  ];
-  LS.set("naveganet_products", products);
-}
+const productsGrid = document.getElementById("productsGrid");
+if (productsGrid) {
+  (async () => {
+    try {
+      const data = await apiFetch("api/productos/list.php");
+      const products = data.data || [];
 
-function getProducts() {
-  return LS.get("naveganet_products", []);
+      productsGrid.innerHTML = products.map(p => `
+        <div class="col-sm-6 col-lg-3">
+          <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden">
+            <div class="bg-light" style="height: 190px; display:flex; align-items:center; justify-content:center;">
+              ${
+                p.imagen_url
+                  ? `<img src="${p.imagen_url}" alt="${p.nombre}" style="max-height: 100%; max-width: 100%; object-fit: contain;">`
+                  : `<div class="text-secondary small">Sin imagen</div>`
+              }
+            </div>
+
+            <div class="card-body">
+              <div class="text-secondary small">ID: ${p.id_producto}</div>
+              <h6 class="fw-semibold mt-1 mb-2">${p.nombre}</h6>
+
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="fw-bold">$${Number(p.precio).toFixed(2)} MXN</div>
+                <span class="badge text-bg-light border">Stock: ${p.stock}</span>
+              </div>
+
+              <button class="btn btn-sm btn-outline-primary w-100 mt-3" disabled>
+                Ver detalle
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join("");
+
+    } catch (err) {
+      console.error(err);
+      productsGrid.innerHTML = `<div class="text-danger">Error: ${err.message}</div>`;
+    }
+  })();
 }
 
 // ====== UI ======
@@ -167,6 +191,7 @@ if (role === "Cliente") {
     <a class="nav-link rounded-3 px-3 py-2" href="equipos.html">Equipos</a>
     <a class="nav-link rounded-3 px-3 py-2" href="nuevo-equipo.html">Nuevo registro</a>
     <div class="mt-2 px-3 text-uppercase text-secondary small fw-semibold">Naveganet</div>
+    <a class="nav-link rounded-3 px-3 py-2" href="productos-admin.html">Productos</a>
     <a class="nav-link rounded-3 px-3 py-2" href="naveganet-usuarios.html">Usuarios</a>
   `;
 
