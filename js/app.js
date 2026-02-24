@@ -5,24 +5,35 @@ const EQUIPOS_STATUS_ENDPOINT = "api/equipos/update_status.php";
 
 // ===== API Helper =====
 async function apiFetch(path, options = {}) {
-  const res = await fetch(path, {
-    credentials: "same-origin",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
+  try {
+    const res = await fetch(path, {
+      credentials: "same-origin",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    });
+
+    const text = await res.text();
+    console.log(`📥 Respuesta de ${path}:`, text.substring(0, 200)); // Log primeros 200 caracteres
+    
+    let data;
+    try { 
+      data = JSON.parse(text); 
+    } catch (e) {
+      console.error("❌ Error parseando JSON:", text);
+      throw new Error("Respuesta no JSON: " + text.substring(0, 100));
     }
-  });
 
-  const text = await res.text();
-  let data;
-  try { data = JSON.parse(text); }
-  catch { throw new Error("Respuesta no JSON: " + text); }
-
-  if (!res.ok || data.ok === false) {
-    throw new Error(data.error || `Error HTTP ${res.status}`);
+    if (!res.ok || data.ok === false) {
+      throw new Error(data.error || `Error HTTP ${res.status}`);
+    }
+    return data;
+  } catch (error) {
+    console.error(`❌ Error en apiFetch a ${path}:`, error);
+    throw error;
   }
-  return data;
 }
 
 // ===== LocalStorage helper (solo sesión) =====
@@ -147,7 +158,10 @@ function protectRoutes() {
 // ===== Modal status (Bootstrap) =====
 function ensureStatusModal() {
   console.log("Verificando si existe statusModal...");
-  if (document.getElementById("statusModal")) return;
+  if (document.getElementById("statusModal")) {
+    console.log("✅ Modal ya existe");
+    return;
+  }
 
   document.body.insertAdjacentHTML("beforeend", `
 <div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
@@ -192,22 +206,34 @@ function ensureStatusModal() {
   </div>
 </div>
   `);
-  console.log("✅ Modal creado, smGuardar existe?", !!document.getElementById("smGuardar"));
+  
+  // Verificar que se creó correctamente
+  setTimeout(() => {
+    console.log("✅ Modal creado, smGuardar existe?", !!document.getElementById("smGuardar"));
+  }, 100);
 }
 
 function setModalMsg(type, text) {
   const el = document.getElementById("smMsg");
-  if (!el) return;
+  if (!el) {
+    console.error("❌ Elemento smMsg no encontrado");
+    return;
+  }
   el.className = `alert alert-${type}`;
   el.textContent = text;
   el.classList.remove("d-none");
+  console.log(`📢 Modal message: ${type} - ${text}`);
 }
+
 function clearModalMsg() {
-  document.getElementById("smMsg")?.classList.add("d-none");
+  const el = document.getElementById("smMsg");
+  if (el) el.classList.add("d-none");
 }
 
 // ================= DOMContentLoaded =================
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("📌 DOMContentLoaded");
+  
   protectRoutes();
   renderSidebarNav();
 
@@ -243,6 +269,7 @@ document.addEventListener("DOMContentLoaded", () => {
           : "dashboard.html";
 
       } catch (err) {
+        console.error("❌ Error login:", err);
         if (loginMsg) loginMsg.textContent = err.message || "Error al iniciar sesión";
       }
     });
@@ -300,6 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
         registerForm.reset();
 
       } catch (err) {
+        console.error("❌ Error register:", err);
         errMsg?.classList.remove("d-none");
         if (errMsg) errMsg.textContent = err.message || "No se pudo crear el usuario.";
       }
@@ -344,6 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (folioInput && data.folio) folioInput.value = data.folio;
         window.location.href = "equipos.html";
       } catch (err) {
+        console.error("❌ Error creando equipo:", err);
         alert(err.message || "Error al registrar equipo");
       }
     });
@@ -352,6 +381,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ===== EQUIPOS LIST + MODAL STATUS (ADMIN) =====
   const equiposBody = document.getElementById("equiposBody");
   if (equiposBody) {
+    console.log("📌 Inicializando equiposBody");
+    
     const searchInput = document.getElementById("searchInput");
     const statusFilter = document.getElementById("statusFilter");
     const btnClear = document.getElementById("btnClear");
@@ -360,7 +391,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const allowed = ["Recibido", "Diagnóstico", "Reparación", "Listo", "Entregado"];
 
     // Variables para el modal
-    let currentFolio = 0;
+    let currentFolio = null;
     let currentActual = "";
     let modal = null;
 
@@ -373,8 +404,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (st) params.set("status", st);
 
       try {
+        console.log("🔄 Cargando equipos...");
         const data = await apiFetch("api/equipos/list.php" + (params.toString() ? "?" + params.toString() : ""));
         const equipos = data.data || [];
+        console.log(`✅ ${equipos.length} equipos cargados`);
 
         equiposBody.innerHTML = equipos.map(x => `
           <tr>
@@ -389,8 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <a class="btn btn-sm btn-outline-secondary me-2"
                  href="detalle-equipo.html?folio=${encodeURIComponent(x.folio)}">Detalle</a>
 
-              <button class="btn btn-sm btn-outline-primary"
-                      data-action="openStatus"
+              <button class="btn btn-sm btn-outline-primary btn-cambiar-estatus"
                       data-folio="${x.folio}"
                       data-estatus="${x.estatus}">
                 Cambiar
@@ -403,6 +435,7 @@ document.addEventListener("DOMContentLoaded", () => {
         else emptyState?.classList.add("d-none");
 
       } catch (err) {
+        console.error("❌ Error cargando equipos:", err);
         equiposBody.innerHTML = `<tr><td colspan="6" class="text-danger">Error: ${err.message}</td></tr>`;
       }
     }
@@ -413,7 +446,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // Obtener referencia al modal de Bootstrap
     const modalEl = document.getElementById("statusModal");
     if (modalEl && window.bootstrap) {
-      modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal = new bootstrap.Modal(modalEl);
+      console.log("✅ Modal de Bootstrap inicializado");
+    } else {
+      console.error("❌ No se pudo inicializar el modal");
     }
 
     const smFolio = document.getElementById("smFolio");
@@ -421,21 +457,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const smNuevo = document.getElementById("smNuevo");
     const smComentario = document.getElementById("smComentario");
     const smGuardar = document.getElementById("smGuardar");
-    const smMsg = document.getElementById("smMsg");
 
     if (smNuevo && smNuevo.options.length === 0) {
       smNuevo.innerHTML = allowed.map(s => `<option value="${s}">${s}</option>`).join("");
+      console.log("✅ Opciones del select cargadas");
     }
 
-    // Evento para abrir modal
+    // Evento para abrir modal (usando delegación en equiposBody)
     equiposBody.addEventListener("click", (e) => {
-      const btn = e.target.closest("button[data-action='openStatus']");
+      const btn = e.target.closest(".btn-cambiar-estatus");
       if (!btn) return;
 
       currentFolio = btn.getAttribute("data-folio");
       currentActual = btn.getAttribute("data-estatus") || "";
 
-      console.log("Abriendo modal - Folio:", currentFolio, "Tipo:", typeof currentFolio, "Estatus:", currentActual);
+      console.log("📌 Abriendo modal - Folio:", currentFolio, "Estatus:", currentActual);
 
       if (!currentFolio) {
         alert("Folio inválido");
@@ -450,24 +486,31 @@ document.addEventListener("DOMContentLoaded", () => {
       if (smNuevo) smNuevo.value = currentActual;
       if (smComentario) smComentario.value = "";
 
-      if (smMsg) smMsg.classList.add("d-none");
+      clearModalMsg();
       
-      if (modal) modal.show();
+      if (modal) {
+        modal.show();
+        console.log("✅ Modal mostrado");
+      } else {
+        console.error("❌ Modal no inicializado");
+      }
     });
 
     // Evento para guardar cambios
     if (smGuardar) {
+      console.log("✅ Evento guardar registrado");
+      
       smGuardar.addEventListener("click", async () => {
-        console.log("✅ Click en Guardar detectado");
+        console.log("🚀 Click en Guardar");
         
-        if (smMsg) smMsg.classList.add("d-none");
+        clearModalMsg();
 
         const nuevo = String(smNuevo?.value || "").trim();
         const comentario = String(smComentario?.value || "").trim() || "Cambio de estatus";
 
-        console.log("📌 Datos a procesar:", { 
+        console.log("📦 Datos a enviar:", { 
           folio: currentFolio, 
-          tipo_folio: typeof currentFolio,
+          tipo: typeof currentFolio,
           nuevo, 
           comentario, 
           actual: currentActual 
@@ -500,16 +543,17 @@ document.addEventListener("DOMContentLoaded", () => {
         smGuardar.disabled = true;
 
         try {
-          console.log("📤 Enviando al servidor:", { 
+          console.log("📤 Enviando petición a:", EQUIPOS_STATUS_ENDPOINT);
+          console.log("📤 Body:", JSON.stringify({ 
             folio: folioNumerico, 
             estatus: nuevo, 
             comentario 
-          });
+          }));
 
           const resp = await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
             method: "POST",
             body: JSON.stringify({ 
-              folio: folioNumerico,  // Ahora enviamos número
+              folio: folioNumerico,
               estatus: nuevo, 
               comentario 
             })
@@ -530,6 +574,8 @@ document.addEventListener("DOMContentLoaded", () => {
           smGuardar.disabled = false;
         }
       });
+    } else {
+      console.error("❌ smGuardar no encontrado en el DOM");
     }
 
     // Cargar equipos inicialmente
@@ -551,6 +597,8 @@ document.addEventListener("DOMContentLoaded", () => {
     (async () => {
       try {
         const email = (getSession()?.email || "").toLowerCase();
+        console.log("📌 Cargando mis equipos para:", email);
+        
         const data = await apiFetch("api/equipos/mine.php?email=" + encodeURIComponent(email));
         const equipos = data.data || [];
 
@@ -568,6 +616,7 @@ document.addEventListener("DOMContentLoaded", () => {
         else empty?.classList.add("d-none");
 
       } catch (err) {
+        console.error("❌ Error cargando mis equipos:", err);
         myEquiposBody.innerHTML = `<tr><td colspan="4" class="text-danger">Error: ${err.message}</td></tr>`;
       }
     })();
@@ -590,6 +639,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       try {
+        console.log("📌 Cargando detalle para folio:", folio);
+        
         const det = await apiFetch("api/equipos/get.php?folio=" + encodeURIComponent(folio));
         const d = det.data;
 
@@ -616,6 +667,7 @@ document.addEventListener("DOMContentLoaded", () => {
         else empty?.classList.add("d-none");
 
       } catch (ex) {
+        console.error("❌ Error cargando detalle:", ex);
         err?.classList.remove("d-none");
         if (err) err.textContent = ex.message || "Error cargando detalle/historial";
       }
@@ -627,6 +679,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (productsGrid) {
     (async () => {
       try {
+        console.log("📌 Cargando productos...");
+        
         const data = await apiFetch("api/productos/list.php");
         const products = data.data || [];
 
@@ -656,6 +710,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }).join("");
 
       } catch (err) {
+        console.error("❌ Error cargando productos:", err);
         productsGrid.innerHTML = `<div class="text-danger">Error: ${err.message}</div>`;
       }
     })();
