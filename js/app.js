@@ -22,7 +22,7 @@ async function apiFetch(path, options = {}) {
   return data;
 }
 
-// ===== Storage =====
+// ===== LocalStorage helper (solo sesión) =====
 const LS = {
   get(key, fallback) {
     try {
@@ -49,6 +49,14 @@ function clearSession() {
 }
 function isLogged() { return localStorage.getItem("ferjer_logged") === "1"; }
 
+// ===== Roles =====
+function normRole(role) { return String(role || "").trim().toLowerCase(); }
+function isClient(role) { return normRole(role) === "cliente"; }
+function isAdminRole(role) {
+  const r = normRole(role);
+  return r === "administrador" || r === "admin";
+}
+
 // ===== UI =====
 function badgeClass(status) {
   if (status === "Diagnóstico") return "text-bg-warning";
@@ -63,30 +71,38 @@ function renderSidebarNav() {
   const nav = document.getElementById("sidebarNav");
   if (!nav) return;
 
-  const session = getSession();
-  const role = session?.role || "";
+  const role = getSession()?.role || "";
 
-  if (role === "Cliente") {
+  if (isClient(role)) {
     nav.innerHTML = `
-      <button type="button" class="nav-link btn btn-link text-start" id="navMisEquipos">Mis equipos</button>
-      <button type="button" class="nav-link btn btn-link text-start" id="navProductos">Productos</button>
+      <button type="button" class="nav-link rounded-3 px-3 py-2 btn btn-link text-start" id="navMisEquipos">
+        Mis equipos
+      </button>
+      <button type="button" class="nav-link rounded-3 px-3 py-2 btn btn-link text-start" id="navProductos">
+        Productos Naveganet
+      </button>
     `;
+
     document.getElementById("navMisEquipos")?.addEventListener("click", () => {
       window.location.href = "cliente-mis-equipos.html";
     });
+
     document.getElementById("navProductos")?.addEventListener("click", () => {
       window.location.href = "cliente-productos.html";
     });
+
     return;
   }
 
   nav.innerHTML = `
-    <a class="nav-link" href="dashboard.html">Dashboard</a>
-    <a class="nav-link" href="equipos.html">Equipos</a>
-    <a class="nav-link" href="nuevo-equipo.html">Nuevo registro</a>
+    <a class="nav-link rounded-3 px-3 py-2" href="dashboard.html">Dashboard</a>
+    <a class="nav-link rounded-3 px-3 py-2" href="equipos.html">Equipos</a>
+    <a class="nav-link rounded-3 px-3 py-2" href="nuevo-equipo.html">Nuevo registro</a>
+
     <div class="mt-2 px-3 text-uppercase text-secondary small fw-semibold">Naveganet</div>
-    <a class="nav-link" href="productos-admin.html">Productos</a>
-    ${role === "Administrador" ? `<a class="nav-link" href="naveganet-usuarios.html">Usuarios</a>` : ``}
+    <a class="nav-link rounded-3 px-3 py-2" href="productos-admin.html">Productos</a>
+
+    ${isAdminRole(role) ? `<a class="nav-link rounded-3 px-3 py-2" href="naveganet-usuarios.html">Usuarios</a>` : ""}
   `;
 }
 
@@ -95,9 +111,7 @@ function protectRoutes() {
   let page = window.location.pathname.split("/").pop();
   if (!page) page = "index.html";
 
-  const role = getSession()?.role || "";
   const publicPages = ["index.html", "login.html", "register.html"];
-
   if (publicPages.includes(page)) return;
 
   if (!isLogged()) {
@@ -105,21 +119,23 @@ function protectRoutes() {
     return;
   }
 
+  const role = getSession()?.role || "";
+
   const clientPages = ["cliente-mis-equipos.html", "cliente-productos.html"];
-  const staffPages  = [
+  const staffPages = [
     "dashboard.html", "equipos.html", "nuevo-equipo.html",
     "detalle-equipo.html", "productos-admin.html", "naveganet-usuarios.html"
   ];
 
-  if (role === "Cliente" && staffPages.includes(page)) {
+  if (isClient(role) && staffPages.includes(page)) {
     window.location.href = "cliente-mis-equipos.html";
     return;
   }
-  if (role !== "Cliente" && clientPages.includes(page)) {
+  if (!isClient(role) && clientPages.includes(page)) {
     window.location.href = "dashboard.html";
     return;
   }
-  if (page === "naveganet-usuarios.html" && role !== "Administrador") {
+  if (page === "naveganet-usuarios.html" && !isAdminRole(role)) {
     window.location.href = "dashboard.html";
   }
 }
@@ -129,13 +145,13 @@ document.addEventListener("DOMContentLoaded", () => {
   protectRoutes();
   renderSidebarNav();
 
-  // ===== LOGOUT =====
+  // Logout
   document.getElementById("btnLogout")?.addEventListener("click", () => {
     clearSession();
     window.location.href = "login.html";
   });
 
-  // ===== LOGIN =====
+  // Login
   const loginForm = document.getElementById("loginForm");
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
@@ -154,13 +170,9 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({ email, password })
         });
 
-        setSession({
-          name: data.user.nombre,
-          email: data.user.email,
-          role: data.user.rol
-        });
+        setSession({ name: data.user.nombre, email: data.user.email, role: data.user.rol });
 
-        window.location.href = (data.user.rol === "Cliente")
+        window.location.href = isClient(data.user.rol)
           ? "cliente-mis-equipos.html"
           : "dashboard.html";
 
@@ -170,9 +182,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ===== NUEVO EQUIPO (MySQL) =====
+  // Nuevo equipo
   const equipoForm = document.getElementById("equipoForm");
   if (equipoForm) {
+    const folioInput = document.getElementById("folio");
+    if (folioInput) folioInput.value = "";
+
     equipoForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
@@ -182,7 +197,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const modelo = document.getElementById("modelo");
       const falla = document.getElementById("falla");
 
-      // Validación simple
       let ok = true;
       [cliente, clienteEmail, tipo, modelo, falla].forEach(el => {
         if (!el || !String(el.value || "").trim()) { el?.classList.add("is-invalid"); ok = false; }
@@ -203,11 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
           })
         });
 
-        // si tu API devuelve folio
-        const folioInput = document.getElementById("folio");
         if (folioInput && data.folio) folioInput.value = data.folio;
-
-        // redirige a lista
         window.location.href = "equipos.html";
       } catch (err) {
         alert(err.message || "Error al registrar equipo");
@@ -215,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ===== EQUIPOS LIST =====
+  // Equipos list + cambiar estatus
   const equiposBody = document.getElementById("equiposBody");
   if (equiposBody) {
     const searchInput = document.getElementById("searchInput");
@@ -243,8 +253,15 @@ document.addEventListener("DOMContentLoaded", () => {
             <td>${x.tipo_equipo} - ${x.modelo}<div class="text-secondary small">${x.fecha_ingreso}</div></td>
             <td><span class="badge ${badgeClass(x.estatus)}">${x.estatus}</span></td>
             <td class="text-end">
-              <a class="btn btn-sm btn-outline-secondary"
+              <a class="btn btn-sm btn-outline-secondary me-1"
                  href="detalle-equipo.html?folio=${encodeURIComponent(x.folio)}">Detalle</a>
+
+              <button class="btn btn-sm btn-outline-primary"
+                      data-action="status"
+                      data-folio="${x.folio}"
+                      data-estatus="${x.estatus}">
+                Cambiar
+              </button>
             </td>
           </tr>
         `).join("");
@@ -265,9 +282,36 @@ document.addEventListener("DOMContentLoaded", () => {
       if (statusFilter) statusFilter.value = "";
       renderEquipos();
     });
+
+    equiposBody.addEventListener("click", async (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      if (btn.getAttribute("data-action") !== "status") return;
+
+      const folio = btn.getAttribute("data-folio");
+      const actual = btn.getAttribute("data-estatus") || "";
+
+      const allowed = ["Recibido", "Diagnóstico", "Reparación", "Listo", "Entregado"];
+      const nuevo = prompt("Nuevo estatus:\n" + allowed.join("\n"), actual);
+      if (!nuevo) return;
+
+      const limpio = nuevo.trim();
+      if (!allowed.includes(limpio)) return alert("Estatus inválido: " + allowed.join(", "));
+      if (limpio === actual) return;
+
+      try {
+        await apiFetch("api/equipos/update-status.php", {
+          method: "POST",
+          body: JSON.stringify({ folio, estatus: limpio })
+        });
+        renderEquipos();
+      } catch (err) {
+        alert(err.message || "No se pudo actualizar el estatus");
+      }
+    });
   }
 
-  // ===== CLIENTE: Mis equipos =====
+  // Cliente: Mis equipos
   const myEquiposBody = document.getElementById("myEquiposBody");
   if (myEquiposBody) {
     (async () => {
@@ -288,13 +332,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const empty = document.getElementById("myEquiposEmpty");
         if (equipos.length === 0) empty?.classList.remove("d-none");
         else empty?.classList.add("d-none");
+
       } catch (err) {
         myEquiposBody.innerHTML = `<tr><td colspan="4" class="text-danger">Error: ${err.message}</td></tr>`;
       }
     })();
   }
 
-  // ===== DETALLE EQUIPO + HISTORIAL =====
+  // Detalle + historial
   const histBody = document.getElementById("histBody");
   if (histBody) {
     (async () => {
@@ -343,7 +388,7 @@ document.addEventListener("DOMContentLoaded", () => {
     })();
   }
 
-  // ===== CLIENTE/GENERAL: Productos (MySQL) =====
+  // Productos (grid cliente)
   const productsGrid = document.getElementById("productsGrid");
   if (productsGrid) {
     (async () => {
@@ -372,108 +417,9 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
           </div>
         `).join("");
-
       } catch (err) {
         productsGrid.innerHTML = `<div class="text-danger">Error: ${err.message}</div>`;
       }
     })();
-  }
-
-  // ===== ADMIN: Productos CRUD (crear + listar + eliminar) =====
-  const prodAdminBody = document.getElementById("prodAdminBody"); // tbody
-  const prodAdminForm = document.getElementById("prodAdminForm"); // form
-  if (prodAdminBody || prodAdminForm) {
-
-    async function renderProductosAdmin() {
-      if (!prodAdminBody) return;
-      try {
-        const data = await apiFetch("api/productos/list.php");
-        const products = data.data || [];
-
-        prodAdminBody.innerHTML = products.map(p => `
-          <tr>
-            <td class="text-secondary">${p.id_producto}</td>
-            <td class="fw-semibold">${p.nombre}</td>
-            <td>$${Number(p.precio).toFixed(2)}</td>
-            <td>${p.stock}</td>
-            <td class="text-end">
-              <button class="btn btn-sm btn-outline-danger"
-                      data-action="del"
-                      data-id="${p.id_producto}">
-                Eliminar
-              </button>
-            </td>
-          </tr>
-        `).join("");
-
-      } catch (err) {
-        prodAdminBody.innerHTML = `<tr><td colspan="5" class="text-danger">Error: ${err.message}</td></tr>`;
-      }
-    }
-
-    prodAdminBody?.addEventListener("click", async (e) => {
-      const btn = e.target.closest("button");
-      if (!btn) return;
-      if (btn.getAttribute("data-action") !== "del") return;
-
-      const id = btn.getAttribute("data-id");
-      if (!id) return;
-
-      if (!confirm("¿Eliminar producto " + id + "?")) return;
-
-      try {
-        await apiFetch("api/productos/delete.php", {
-          method: "POST",
-          body: JSON.stringify({ id_producto: id })
-        });
-        renderProductosAdmin();
-      } catch (err) {
-        alert(err.message || "No se pudo eliminar");
-      }
-    });
-
-    prodAdminForm?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const nombre = document.getElementById("pNombre");
-      const precio = document.getElementById("pPrecio");
-      const stock = document.getElementById("pStock");
-      const imagen = document.getElementById("pImagenUrl");
-      const msg = document.getElementById("pMsg");
-
-      const payload = {
-        nombre: (nombre?.value || "").trim(),
-        precio: Number(precio?.value || 0),
-        stock: Number(stock?.value || 0),
-        imagen_url: (imagen?.value || "").trim()
-      };
-
-      if (!payload.nombre) return alert("Nombre requerido");
-      if (!Number.isFinite(payload.precio)) return alert("Precio inválido");
-      if (!Number.isFinite(payload.stock)) return alert("Stock inválido");
-
-      try {
-        msg?.classList.remove("d-none");
-        if (msg) msg.textContent = "Guardando...";
-
-        await apiFetch("api/productos/create.php", {
-          method: "POST",
-          body: JSON.stringify(payload)
-        });
-
-        prodAdminForm.reset();
-        if (msg) msg.textContent = "Producto creado ✅";
-        renderProductosAdmin();
-
-        setTimeout(() => msg?.classList.add("d-none"), 1200);
-      } catch (err) {
-        if (msg) {
-          msg.classList.remove("d-none");
-          msg.textContent = err.message || "No se pudo crear";
-        }
-      }
-    });
-
-    renderProductosAdmin();
   }
 });
