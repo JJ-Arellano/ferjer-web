@@ -103,12 +103,12 @@
 
         <div class="modal-body">
           <div class="mb-2 text-secondary small">
-            Folio: <span class="fw-semibold" id="stFolioLabel">-</span>
+            Folio: <span class="fw-semibold" id="smFolio">-</span>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Nuevo estatus</label>
-            <select class="form-select" id="stNuevo">
+            <select class="form-select" id="smNuevo">
               <option>Recibido</option>
               <option>Diagnóstico</option>
               <option>Reparación</option>
@@ -119,17 +119,18 @@
 
           <div class="mb-2">
             <label class="form-label">Comentario (opcional)</label>
-            <textarea class="form-control" id="stComentario" rows="3"
+            <textarea class="form-control" id="smComentario" rows="3"
               placeholder="Ej. Revisión inicial / Se cambió pieza / Listo para entrega"></textarea>
           </div>
 
-          <div id="stErr" class="alert alert-danger d-none mt-3"></div>
-          <div id="stOk" class="alert alert-success d-none mt-3">Estatus actualizado ✅</div>
+          <div class="alert d-none mt-3" id="smMsg"></div>
+          <div id="smErr" class="alert alert-danger d-none mt-3"></div>
+          <div id="smMsg" class="alert alert-success d-none mt-3">Estatus actualizado ✅</div>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-primary" id="btnGuardarStatus">Guardar</button>
+          <button type="button" class="btn btn-primary" id="smGuardar">Guardar</button>
         </div>
       </div>
     </div>

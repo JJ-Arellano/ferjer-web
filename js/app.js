@@ -53,9 +53,14 @@ const LS = {
 
 // ===== Sesión =====
 function setSession(user) {
-  const roleClean = String(user.role || "").trim();
+  const roleClean = String(user.role || user.rol || "").trim();
   localStorage.setItem("ferjer_logged", "1");
-  LS.set("ferjer_session", { name: user.name, email: user.email, role: roleClean });
+  LS.set("ferjer_session", { 
+    id:    user.id || user.id_usuario || null,
+    name:  user.name, 
+    email: user.email, 
+    role:  roleClean 
+  });
 }
 function getSession() { return LS.get("ferjer_session", null); }
 function clearSession() {
@@ -66,11 +71,21 @@ function isLogged() { return localStorage.getItem("ferjer_logged") === "1"; }
 
 // ===== Roles =====
 function normRole(role) { return String(role || "").trim().toLowerCase(); }
-function isClient(role) { return normRole(role) === "cliente"; }
-function isAdminRole(role) {
-  const r = normRole(role);
-  return r === "administrador" || r === "admin";
-}
+function isClient(role)    { return normRole(role) === "cliente"; }
+function isCliente(role)   { return normRole(role) === "cliente"; }
+function isTecnico(role)   { return normRole(role) === "tecnico"; }
+function isEmpleado(role)  { return normRole(role) === "empleado"; }
+function isAdminRole(role) { const r = normRole(role); return r === "administrador" || r === "admin"; }
+function isStaff(role)     { return isAdminRole(role) || isTecnico(role) || isEmpleado(role); }
+
+function canVerEquipos(role)          { return isStaff(role); }
+function canRegistrarEquipo(role)     { return isStaff(role); }
+function canCambiarEstatus(role)      { return isStaff(role); }
+function canCambiarEstatusCompleto(role) { return isAdminRole(role) || isTecnico(role); }
+function canVerHistorial(role)        { return isAdminRole(role) || isTecnico(role); }
+function canCrearUsuarios(role)       { return isAdminRole(role); }
+function canVerTienda(role)           { return isCliente(role) || isAdminRole(role) || isEmpleado(role); }
+function canVerEntregas(role)         { return isAdminRole(role) || isEmpleado(role); }
 
 // ===== UI =====
 function badgeClass(status) {
@@ -85,40 +100,26 @@ function badgeClass(status) {
 function renderSidebarNav() {
   const nav = document.getElementById("sidebarNav");
   if (!nav) return;
-
   const role = getSession()?.role || "";
 
-  if (isClient(role)) {
+  if (isCliente(role)) {
     nav.innerHTML = `
-      <button type="button" class="nav-link rounded-3 px-3 py-2 btn btn-link text-start" id="navMisEquipos">
-        Mis equipos
-      </button>
-      <button type="button" class="nav-link rounded-3 px-3 py-2 btn btn-link text-start" id="navProductos">
-        Productos Naveganet
-      </button>
+      <a class="nav-link rounded-3 px-3 py-2" href="cliente-mis-equipos.html">Mis equipos</a>
+      <a class="nav-link rounded-3 px-3 py-2" href="cliente-productos.html">Tienda</a>
     `;
-
-    document.getElementById("navMisEquipos")?.addEventListener("click", () => {
-      window.location.href = "cliente-mis-equipos.html";
-    });
-
-    document.getElementById("navProductos")?.addEventListener("click", () => {
-      window.location.href = "cliente-productos.html";
-    });
-
     return;
   }
 
-  nav.innerHTML = `
-    <a class="nav-link rounded-3 px-3 py-2" href="dashboard.html">Dashboard</a>
-    <a class="nav-link rounded-3 px-3 py-2" href="equipos.html">Equipos</a>
-    <a class="nav-link rounded-3 px-3 py-2" href="nuevo-equipo.html">Nuevo registro</a>
+  let links = `<a class="nav-link rounded-3 px-3 py-2" href="dashboard.html">Dashboard</a>`;
+  if (canVerEquipos(role))      links += `<a class="nav-link rounded-3 px-3 py-2" href="equipos.html">Equipos</a>`;
+  if (canRegistrarEquipo(role)) links += `<a class="nav-link rounded-3 px-3 py-2" href="nuevo-equipo.html">Nuevo registro</a>`;
+  if (canVerEntregas(role))     links += `<a class="nav-link rounded-3 px-3 py-2" href="entregas.html">Entregas pendientes</a>`;
 
-    <div class="mt-2 px-3 text-uppercase text-secondary small fw-semibold">Naveganet</div>
-    <a class="nav-link rounded-3 px-3 py-2" href="productos-admin.html">Productos</a>
+  links += `<div class="mt-2 px-3 text-uppercase text-secondary small fw-semibold">Naveganet</div>`;
+  if (canVerTienda(role))       links += `<a class="nav-link rounded-3 px-3 py-2" href="productos-admin.html">Productos</a>`;
+  if (canCrearUsuarios(role))   links += `<a class="nav-link rounded-3 px-3 py-2" href="naveganet-usuarios.html">Usuarios</a>`;
 
-    ${isAdminRole(role) ? `<a class="nav-link rounded-3 px-3 py-2" href="naveganet-usuarios.html">Usuarios</a>` : ""}
-  `;
+  nav.innerHTML = links;
 }
 
 // ===== Protección =====
@@ -129,30 +130,18 @@ function protectRoutes() {
   const publicPages = ["index.html", "login.html", "register.html"];
   if (publicPages.includes(page)) return;
 
-  if (!isLogged()) {
-    window.location.href = "login.html";
-    return;
-  }
+  if (!isLogged()) { window.location.href = "login.html"; return; }
 
   const role = getSession()?.role || "";
-
   const clientPages = ["cliente-mis-equipos.html", "cliente-productos.html"];
-  const staffPages = [
+  const staffPages  = [
     "dashboard.html", "equipos.html", "nuevo-equipo.html",
-    "detalle-equipo.html", "productos-admin.html", "naveganet-usuarios.html"
+    "detalle-equipo.html", "productos-admin.html", "naveganet-usuarios.html", "entregas.html"
   ];
 
-  if (isClient(role) && staffPages.includes(page)) {
-    window.location.href = "cliente-mis-equipos.html";
-    return;
-  }
-  if (!isClient(role) && clientPages.includes(page)) {
-    window.location.href = "dashboard.html";
-    return;
-  }
-  if (page === "naveganet-usuarios.html" && !isAdminRole(role)) {
-    window.location.href = "dashboard.html";
-  }
+  if (isCliente(role) && staffPages.includes(page))  { window.location.href = "cliente-mis-equipos.html"; return; }
+  if (isStaff(role)   && clientPages.includes(page)) { window.location.href = "dashboard.html"; return; }
+  if (page === "naveganet-usuarios.html" && !canCrearUsuarios(role)) { window.location.href = "dashboard.html"; return; }
 }
 
 // ===== Modal status (Bootstrap) =====
@@ -262,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({ email, password })
         });
 
-        setSession({ name: data.user.nombre, email: data.user.email, role: data.user.rol });
+        setSession({ name: data.user.nombre, email: data.user.email, role: data.user.rol, id: data.user.id_usuario });
 
         window.location.href = isClient(data.user.rol)
           ? "cliente-mis-equipos.html"
@@ -496,87 +485,56 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // Evento para guardar cambios
-    if (smGuardar) {
-      console.log("✅ Evento guardar registrado");
-      
-      smGuardar.addEventListener("click", async () => {
-        console.log("🚀 Click en Guardar");
-        
-        clearModalMsg();
+// Evento para guardar cambios
+if (smGuardar) {
+  console.log("✅ Evento guardar registrado");
+  
+  smGuardar.addEventListener("click", async function handler() {
+    if (smGuardar.dataset.busy === "1") return;
+    smGuardar.dataset.busy = "1";
 
-        const nuevo = String(smNuevo?.value || "").trim();
-        const comentario = String(smComentario?.value || "").trim() || "Cambio de estatus";
+    const smMsgEl = document.getElementById("smMsg");
 
-        console.log("📦 Datos a enviar:", { 
-          folio: currentFolio, 
-          tipo: typeof currentFolio,
-          nuevo, 
-          comentario, 
-          actual: currentActual 
-        });
-
-        // Validaciones
-        if (!allowed.includes(nuevo)) {
-          setModalMsg("danger", "Estatus inválido.");
-          return;
-        }
-        
-        if (!currentFolio) {
-          setModalMsg("danger", "Folio inválido.");
-          return;
-        }
-
-        // Convertir folio a número (importante para PHP)
-        const folioNumerico = parseInt(currentFolio, 10);
-        
-        if (isNaN(folioNumerico) || folioNumerico <= 0) {
-          setModalMsg("danger", "El folio debe ser un número válido");
-          return;
-        }
-
-        if (nuevo === currentActual) {
-          setModalMsg("secondary", "No hubo cambios.");
-          return;
-        }
-
-        smGuardar.disabled = true;
-
-        try {
-          console.log("📤 Enviando petición a:", EQUIPOS_STATUS_ENDPOINT);
-          console.log("📤 Body:", JSON.stringify({ 
-            folio: folioNumerico, 
-            estatus: nuevo, 
-            comentario 
-          }));
-
-          const resp = await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
-            method: "POST",
-            body: JSON.stringify({ 
-              folio: folioNumerico,
-              estatus: nuevo, 
-              comentario 
-            })
-          });
-
-          console.log("✅ Respuesta del servidor:", resp);
-
-          // Actualizar la lista
-          await renderEquipos();
-          currentActual = nuevo;
-
-          if (modal) modal.hide();
-
-        } catch (err) {
-          console.error("❌ Error en la petición:", err);
-          setModalMsg("danger", err.message || "No se pudo actualizar el estatus");
-        } finally {
-          smGuardar.disabled = false;
-        }
-      });
-    } else {
-      console.error("❌ smGuardar no encontrado en el DOM");
+    function showMsg(type, text) {
+      if (!smMsgEl) return;
+      smMsgEl.className = `alert alert-${type}`;
+      smMsgEl.textContent = text;
+      smMsgEl.classList.remove("d-none");
     }
+
+    const nuevo = String(smNuevo?.value || "").trim();
+    const comentario = String(smComentario?.value || "").trim() || "Cambio de estatus";
+
+    if (!allowed.includes(nuevo)) { showMsg("danger", "Estatus inválido."); smGuardar.dataset.busy = "0"; return; }
+    if (!currentFolio) { showMsg("danger", "Folio inválido."); smGuardar.dataset.busy = "0"; return; }
+    if (nuevo === currentActual) { showMsg("warning", "⚠️ Selecciona un estatus diferente."); smGuardar.dataset.busy = "0"; return; }
+
+    smGuardar.disabled = true;
+    smGuardar.textContent = "Guardando...";
+
+    try {
+      const folioNum = parseInt(currentFolio, 10);
+      const resp = await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
+        method: "POST",
+        body: JSON.stringify({ folio: folioNum, estatus: nuevo, comentario })
+      });
+
+      console.log("✅ Guardado:", resp);
+      await renderEquipos();
+      currentActual = nuevo;
+      modal.hide();
+
+    } catch (err) {
+      showMsg("danger", err.message || "No se pudo actualizar");
+    } finally {
+      smGuardar.disabled = false;
+      smGuardar.textContent = "Guardar";
+      smGuardar.dataset.busy = "0";
+    }
+  });
+} else {
+  console.error("❌ smGuardar no encontrado en el DOM");
+}
 
     // Cargar equipos inicialmente
     renderEquipos();
