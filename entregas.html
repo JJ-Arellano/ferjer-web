@@ -34,7 +34,7 @@
             <small class="text-secondary">Pedidos listos para recoger en tienda</small>
           </div>
           <div class="d-flex align-items-center gap-2">
-            <span class="text-secondary small">Usuario: <span class="fw-semibold" id="topUsuario">-</span></span>
+            <span class="text-secondary small" id="topbarUsuario"></span>
           </div>
         </div>
       </header>
@@ -159,7 +159,7 @@
       async function cargarEntregas() {
         entregasBody.innerHTML = `<tr><td colspan="7" class="text-center text-secondary py-4">Cargando...</td></tr>`;
         try {
-          const data = await apiFetch("api/pedidos/entregas.php");
+          const data = await apiFetch (BASE_API + "pedidos/entregas.php");
           entregasPendientes = data.data || [];
 
           kpiPendientes.textContent = entregasPendientes.length;
@@ -224,7 +224,7 @@
         btn.textContent = "Guardando...";
 
         try {
-          await apiFetch("api/pedidos/entregas.php", {
+          await apiFetch(BASE_API + "pedidos/entregas.php", {
             method: "POST",
             body: JSON.stringify({ id_pedido: pedidoSeleccionado })
           });

@@ -13,13 +13,12 @@
     .cart-count { position: absolute; top: -6px; right: -6px; background: #dc3545;
                   color: #fff; border-radius: 50%; width: 20px; height: 20px;
                   font-size: 11px; display: flex; align-items: center; justify-content: center; }
+    .card-input { letter-spacing: 2px; }
   </style>
 </head>
 <body class="bg-body-tertiary">
 
   <div class="d-flex">
-
-    <!-- Sidebar -->
     <aside class="sidebar bg-white border-end">
       <div class="p-3 border-bottom">
         <div class="fw-bold">FERJER</div>
@@ -31,10 +30,7 @@
       </div>
     </aside>
 
-    <!-- Content -->
     <main class="flex-grow-1">
-
-      <!-- Topbar -->
       <header class="bg-white border-bottom">
         <div class="container-fluid py-3 d-flex align-items-center justify-content-between">
           <div>
@@ -42,20 +38,25 @@
             <small class="text-secondary">Productos disponibles</small>
           </div>
           <div class="d-flex align-items-center gap-2">
-            <span class="text-secondary small">Usuario: <span class="fw-semibold" id="topUsuario">-</span></span>
+            <span class="text-secondary small" id="topbarUsuario"></span>
           </div>
         </div>
       </header>
 
       <section class="container-fluid py-4">
+        <!-- Leyenda recogida en tienda -->
+        <div class="alert alert-warning d-flex align-items-center gap-2 mb-4" role="alert">
+          <span style="font-size:1.2rem;">🏪</span>
+          <div>
+            <strong>Solo recolección en tienda.</strong> Los pedidos <strong>no se envían a domicilio</strong>. Una vez confirmado tu pedido, pasa a recogerlo directamente en nuestra tienda.
+          </div>
+        </div>
 
         <div class="alert alert-danger d-none" id="shopErr"></div>
 
-        <!-- Grid de productos -->
         <div class="row g-3" id="productsGrid">
           <div class="col-12 text-center text-secondary py-5">Cargando productos...</div>
         </div>
-
       </section>
     </main>
   </div>
@@ -70,27 +71,75 @@
   </div>
 
   <!-- Offcanvas: Carrito -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasCarrito">
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasCarrito" style="width:400px;">
     <div class="offcanvas-header border-bottom">
       <h5 class="offcanvas-title fw-semibold">Tu carrito</h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
     </div>
-    <div class="offcanvas-body d-flex flex-column">
+    <div class="offcanvas-body d-flex flex-column p-0">
 
-      <div class="alert alert-info d-none" id="cartEmpty">Tu carrito está vacío.</div>
-      <div class="flex-grow-1" id="cartItems"></div>
+      <!-- Paso 1: Productos -->
+      <div id="pasoProductos" class="d-flex flex-column flex-grow-1 p-3">
+        <div class="alert alert-info d-none" id="cartEmpty">Tu carrito está vacío.</div>
+        <div class="flex-grow-1" id="cartItems"></div>
 
-      <div class="border-top pt-3 mt-3" id="cartFooter" style="display:none!important">
-        <div class="d-flex justify-content-between fw-semibold mb-3">
-          <span>Total</span>
-          <span id="cartTotal">$0.00</span>
+        <div id="cartFooter" style="display:none!important">
+          <div class="border-top pt-3 mt-2">
+            <div class="d-flex justify-content-between fw-semibold mb-3">
+              <span>Total</span>
+              <span id="cartTotal">$0.00</span>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Notas (opcional)</label>
+              <textarea class="form-control" id="cartNotas" rows="2" placeholder="Ej: Pago con tarjeta, llevar factura..."></textarea>
+            </div>
+            <button class="btn btn-primary w-100" id="btnIrAPago">Continuar al pago →</button>
+          </div>
         </div>
-        <div class="mb-2">
-          <label class="form-label small text-secondary">Notas (opcional)</label>
-          <textarea class="form-control" id="cartNotas" rows="2" placeholder="Ej: Pago con tarjeta, llevar factura..."></textarea>
+      </div>
+
+      <!-- Paso 2: Pago con tarjeta -->
+      <div id="pasoPago" class="d-flex flex-column flex-grow-1 p-3 d-none">
+        <button class="btn btn-link text-secondary p-0 mb-3 text-start" id="btnVolverCarrito">← Volver al carrito</button>
+
+        <h6 class="fw-semibold mb-1">Datos de pago</h6>
+        <small class="text-secondary mb-3 d-block">Ingresa los datos de tu tarjeta para confirmar el pedido.</small>
+
+        <!-- Leyenda en el paso de pago también -->
+        <div class="alert alert-warning small py-2 mb-3">
+          🏪 Recuerda que tu pedido <strong>solo se entrega en tienda</strong>.
         </div>
-        <button class="btn btn-primary w-100" id="btnConfirmarPedido">Confirmar pedido</button>
-        <div class="alert d-none mt-2" id="cartMsg"></div>
+
+        <div class="mb-3">
+          <label class="form-label small">Número de tarjeta</label>
+          <input type="text" class="form-control card-input" id="cardNumero"
+                 placeholder="0000 0000 0000 0000" maxlength="19">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small">Nombre en la tarjeta</label>
+          <input type="text" class="form-control" id="cardNombre" placeholder="Ej. JUAN PEREZ">
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label small">Vencimiento</label>
+            <input type="text" class="form-control card-input" id="cardVencimiento"
+                   placeholder="MM/AA" maxlength="5">
+          </div>
+          <div class="col-6">
+            <label class="form-label small">CVV</label>
+            <input type="text" class="form-control card-input" id="cardCvv"
+                   placeholder="123" maxlength="4">
+          </div>
+        </div>
+
+        <div class="border-top pt-3 mt-auto">
+          <div class="d-flex justify-content-between fw-semibold mb-3">
+            <span>Total a pagar</span>
+            <span id="pagoTotal">$0.00</span>
+          </div>
+          <button class="btn btn-success w-100" id="btnConfirmarPedido">✓ Confirmar pedido</button>
+          <div class="alert d-none mt-2" id="cartMsg"></div>
+        </div>
       </div>
 
     </div>
@@ -100,8 +149,10 @@
   <script src="js/app.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
-      const session = getSession();
-      document.getElementById("topUsuario").textContent = session?.name || "-";
+
+      if (!isCliente(getSession()?.role)) {
+        document.getElementById("btnCarrito")?.classList.add("d-none");
+}
 
       const productsGrid = document.getElementById("productsGrid");
       const cartItems    = document.getElementById("cartItems");
@@ -110,15 +161,49 @@
       const cartTotal    = document.getElementById("cartTotal");
       const cartCount    = document.getElementById("cartCount");
       const cartMsg      = document.getElementById("cartMsg");
+      const pasoProductos = document.getElementById("pasoProductos");
+      const pasoPago      = document.getElementById("pasoPago");
 
       const offcanvas = bootstrap.Offcanvas.getOrCreateInstance(document.getElementById("offcanvasCarrito"));
 
       let carritoActual = { id_pedido: null, total: 0, carrito: [] };
 
+      // ===== Formatear número de tarjeta =====
+      document.getElementById("cardNumero").addEventListener("input", (e) => {
+        let val = e.target.value.replace(/\D/g, "").substring(0, 16);
+        e.target.value = val.replace(/(.{4})/g, "$1 ").trim();
+      });
+
+      // ===== Formatear vencimiento =====
+      document.getElementById("cardVencimiento").addEventListener("input", (e) => {
+        let val = e.target.value.replace(/\D/g, "").substring(0, 4);
+        if (val.length >= 2) val = val.substring(0, 2) + "/" + val.substring(2);
+        e.target.value = val;
+      });
+
+      // ===== Solo números en CVV =====
+      document.getElementById("cardCvv").addEventListener("input", (e) => {
+        e.target.value = e.target.value.replace(/\D/g, "").substring(0, 4);
+      });
+
+      // ===== Ir al paso de pago =====
+      document.getElementById("btnIrAPago").addEventListener("click", () => {
+        document.getElementById("pagoTotal").textContent = "$" + Number(carritoActual.total).toFixed(2);
+        pasoProductos.classList.add("d-none");
+        pasoPago.classList.remove("d-none");
+        cartMsg.classList.add("d-none");
+      });
+
+      // ===== Volver al carrito =====
+      document.getElementById("btnVolverCarrito").addEventListener("click", () => {
+        pasoPago.classList.add("d-none");
+        pasoProductos.classList.remove("d-none");
+      });
+
       // ===== Cargar productos =====
       async function cargarProductos() {
         try {
-          const data     = await apiFetch("api/productos/list.php");
+          const data     = await apiFetch(BASE_API + "productos/list.php");
           const products = data.data || [];
 
           if (products.length === 0) {
@@ -144,12 +229,8 @@
                       <div class="fw-bold">$${Number(p.precio).toFixed(2)}</div>
                       ${sinStock
                         ? `<span class="badge text-bg-secondary">Sin stock</span>`
-                        : `<button class="btn btn-sm btn-primary btn-agregar"
-                                   data-id="${p.id_producto}"
-                                   data-nombre="${p.nombre}"
-                                   data-precio="${p.precio}">
-                             + Agregar
-                           </button>`}
+                        : (isCliente(getSession()?.role) ? `<button class="btn btn-sm btn-primary btn-agregar"
+                            data-id="${p.id_producto}">+ Agregar</button>` : '')}
                     </div>
                   </div>
                 </div>
@@ -165,7 +246,7 @@
       // ===== Cargar carrito =====
       async function cargarCarrito() {
         try {
-          const data = await apiFetch("api/carrito/get.php");
+          const data = await apiFetch(BASE_API + "carrito/get_carrito.php");
           carritoActual = data;
           renderCarrito();
         } catch (err) {
@@ -178,13 +259,8 @@
         const items = carritoActual.carrito || [];
         const total = carritoActual.total || 0;
 
-        // Badge contador
-        if (items.length > 0) {
-          cartCount.textContent = items.length;
-          cartCount.classList.remove("d-none");
-        } else {
-          cartCount.classList.add("d-none");
-        }
+        cartCount.textContent = items.length;
+        items.length > 0 ? cartCount.classList.remove("d-none") : cartCount.classList.add("d-none");
 
         if (items.length === 0) {
           cartEmpty.classList.remove("d-none");
@@ -195,7 +271,6 @@
 
         cartEmpty.classList.add("d-none");
         cartFooter.style.removeProperty("display");
-
         cartTotal.textContent = "$" + Number(total).toFixed(2);
 
         cartItems.innerHTML = items.map(item => `
@@ -222,12 +297,10 @@
       productsGrid.addEventListener("click", async (e) => {
         const btn = e.target.closest(".btn-agregar");
         if (!btn) return;
-
-        btn.disabled    = true;
+        btn.disabled = true;
         btn.textContent = "...";
-
         try {
-          await apiFetch("api/carrito/agregar.php", {
+          await apiFetch(BASE_API + "carrito/agregar.php", {
             method: "POST",
             body: JSON.stringify({ id_producto: parseInt(btn.getAttribute("data-id")), cantidad: 1 })
           });
@@ -235,7 +308,7 @@
         } catch (err) {
           alert(err.message || "No se pudo agregar al carrito");
         } finally {
-          btn.disabled    = false;
+          btn.disabled = false;
           btn.textContent = "+ Agregar";
         }
       });
@@ -244,14 +317,13 @@
       cartItems.addEventListener("click", async (e) => {
         const btn = e.target.closest(".btn-qty");
         if (!btn) return;
-
-        const id_item  = parseInt(btn.getAttribute("data-id"));
-        const cantidad = parseInt(btn.getAttribute("data-qty"));
-
         try {
-          await apiFetch("api/carrito/actualizar.php", {
+          await apiFetch(BASE_API + "carrito/actualizar.php", {
             method: "POST",
-            body: JSON.stringify({ id_item, cantidad })
+            body: JSON.stringify({
+              id_item: parseInt(btn.getAttribute("data-id")),
+              cantidad: parseInt(btn.getAttribute("data-qty"))
+            })
           });
           await cargarCarrito();
         } catch (err) {
@@ -263,41 +335,144 @@
       document.getElementById("btnConfirmarPedido").addEventListener("click", async () => {
         if (!carritoActual.id_pedido) return;
 
+        // Validar tarjeta
+        const numero     = document.getElementById("cardNumero").value.replace(/\s/g, "");
+        const nombre     = document.getElementById("cardNombre").value.trim();
+        const vencimiento = document.getElementById("cardVencimiento").value.trim();
+        const cvv        = document.getElementById("cardCvv").value.trim();
+
+        cartMsg.classList.add("d-none");
+
+        if (numero.length < 16 || !nombre || vencimiento.length < 5 || cvv.length < 3) {
+          cartMsg.className = "alert alert-danger mt-2";
+          cartMsg.textContent = "Por favor completa todos los datos de tu tarjeta.";
+          cartMsg.classList.remove("d-none");
+          return;
+        }
+
         const btn   = document.getElementById("btnConfirmarPedido");
         const notas = document.getElementById("cartNotas")?.value || "";
 
-        cartMsg.classList.add("d-none");
         btn.disabled    = true;
         btn.textContent = "Procesando...";
 
         try {
-          const resp = await apiFetch("api/carrito/confirmar.php", {
+          const resp = await apiFetch(BASE_API + "carrito/confirmar.php", {
             method: "POST",
             body: JSON.stringify({ id_pedido: carritoActual.id_pedido, notas })
           });
 
-          cartMsg.className   = "alert alert-success mt-2";
-          cartMsg.textContent = `✅ Pedido #${resp.id_pedido} confirmado. Total: $${Number(resp.total).toFixed(2)} MXN. Pasa a recogerlo a tienda.`;
-          cartMsg.classList.remove("d-none");
+      const session = getSession();
+      const itemsTicket = carritoActual.carrito || [];
+
+        cartMsg.className = "alert alert-success mt-2";
+        cartMsg.innerHTML = `
+          ✅ Pedido #${resp.id_pedido} confirmado. Total: $${Number(resp.total).toFixed(2)} MXN.<br>
+          <button class="btn btn-sm btn-outline-success mt-2" id="btnTicket">🖨️ Ver / Imprimir ticket</button>
+        `;
+        cartMsg.classList.remove("d-none");
+
+        document.getElementById("btnTicket").addEventListener("click", () => {
+          const fecha = new Date().toLocaleString("es-MX");
+          const lineas = itemsTicket.map(i => `
+            <tr>
+              <td>${i.nombre}</td>
+              <td style="text-align:center">${i.cantidad}</td>
+              <td style="text-align:right">$${Number(i.precio_unit).toFixed(2)}</td>
+              <td style="text-align:right">$${Number(i.subtotal).toFixed(2)}</td>
+            </tr>
+          `).join("");
+
+          const ventana = window.open("", "_blank");
+          ventana.document.write(`
+            <!doctype html>
+            <html lang="es">
+            <head>
+              <meta charset="utf-8">
+              <title>Ticket #${resp.id_pedido}</title>
+              <style>
+                body { font-family: Arial, sans-serif; max-width: 400px; margin: 30px auto; color: #333; }
+                h1 { font-size: 22px; margin-bottom: 0; }
+                .sub { color: #777; font-size: 13px; margin-bottom: 16px; }
+                .divider { border-top: 1px dashed #ccc; margin: 12px 0; }
+                table { width: 100%; border-collapse: collapse; font-size: 13px; }
+                th { text-align: left; border-bottom: 1px solid #ccc; padding: 4px 0; }
+                td { padding: 4px 0; }
+                .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 10px; }
+                .footer { font-size: 12px; color: #888; text-align: center; margin-top: 20px; }
+                @media print { button { display: none; } }
+              </style>
+            </head>
+            <body>
+              <h1>FERJER</h1>
+              <div class="sub">Sistema de seguimiento de equipos</div>
+
+              <div class="divider"></div>
+
+              <div style="font-size:13px;">
+                <strong>Pedido #${resp.id_pedido}</strong><br>
+                Fecha: ${fecha}<br>
+                Cliente: ${session?.name || "-"}<br>
+                Correo: ${session?.email || "-"}
+              </div>
+
+              <div class="divider"></div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th style="text-align:center">Cant.</th>
+                    <th style="text-align:right">Precio</th>
+                    <th style="text-align:right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>${lineas}</tbody>
+              </table>
+
+              <div class="divider"></div>
+              <div class="total">Total: $${Number(resp.total).toFixed(2)} MXN</div>
+
+              <div class="divider"></div>
+              <div class="footer">
+                🏪 Tu pedido solo se entrega en tienda.<br>
+                Preséntate con este ticket para recogerlo.<br><br>
+                ¡Gracias por tu compra!
+              </div>
+
+              <br>
+              <button onclick="window.print()" style="width:100%;padding:10px;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">
+                🖨️ Imprimir / Guardar PDF
+              </button>
+            </body>
+            </html>
+          `);
+        ventana.document.close();
+      });
+          // Limpiar formulario tarjeta
+          document.getElementById("cardNumero").value = "";
+          document.getElementById("cardNombre").value = "";
+          document.getElementById("cardVencimiento").value = "";
+          document.getElementById("cardCvv").value = "";
 
           carritoActual = { id_pedido: null, total: 0, carrito: [] };
           renderCarrito();
-          await cargarProductos(); // refrescar stock
+          await cargarProductos();
 
+          // Volver a paso productos después de 3 segundos
         } catch (err) {
           cartMsg.className   = "alert alert-danger mt-2";
           cartMsg.textContent = err.message || "No se pudo confirmar el pedido";
           cartMsg.classList.remove("d-none");
         } finally {
           btn.disabled    = false;
-          btn.textContent = "Confirmar pedido";
+          btn.textContent = "✓ Confirmar pedido";
         }
       });
 
       // Botón flotante abre carrito
       document.getElementById("btnCarrito").addEventListener("click", () => offcanvas.show());
 
-      // Inicializar
       await cargarProductos();
       await cargarCarrito();
     });

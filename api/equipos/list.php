@@ -1,6 +1,12 @@
 <?php
 require_once __DIR__ . "/../config/db.php";
 require_once __DIR__ . "/../helpers/response.php";
+require_once __DIR__ . "/../helpers/auth.php";
+
+// Listado interno: Administrador / Tecnico / Empleado
+only_roles(["Administrador", "Tecnico", "Empleado"]);
+
+if ($_SERVER["REQUEST_METHOD"] !== "GET") json_err("Método no permitido", 405);
 
 $search = trim($_GET["search"] ?? "");
 $status = trim($_GET["status"] ?? "");
@@ -45,5 +51,5 @@ try {
   $st->execute($params);
   json_ok(["data" => $st->fetchAll()]);
 } catch (Exception $e) {
-  json_err("Error al listar", 500);
+  json_err("Error al listar equipos", 500);
 }

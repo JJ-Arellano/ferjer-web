@@ -1,92 +1,62 @@
 <?php
 require_once __DIR__ . "/../config/db.php";
 require_once __DIR__ . "/../helpers/response.php";
-
-// 🔍 DEPURACIÓN: Loggear lo que llega
-error_log("=== update_status.php ===");
-error_log("Method: " . $_SERVER["REQUEST_METHOD"]);
-$input = file_get_contents("php://input");
-error_log("Raw input: " . $input);
+require_once __DIR__ . "/../helpers/auth.php";
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") json_err("Método no permitido", 405);
 
 $in = read_json_body();
-error_log("Parsed data: " . print_r($in, true));
+
+// Solo Administrador y Tecnico pueden cambiar estatus
+// Solo Administrador, Tecnico y Empleado pueden cambiar estatus
+$usuario = only_roles(["Administrador", "Tecnico", "Empleado"]);
+
+// Empleado solo puede cambiar a "Entregado"
+if (strtolower(trim($usuario["rol"])) === "empleado" && trim($in["estatus"] ?? "") !== "Entregado") {
+    json_err("Acceso denegado", 403);
+}
 
 $folio = isset($in["folio"]) ? (int)$in["folio"] : 0;
 $estatus = trim($in["estatus"] ?? "");
 $comentario = trim($in["comentario"] ?? "Cambio de estatus");
 
-error_log("Processed - Folio: $folio (tipo: " . gettype($folio) . "), Estatus: $estatus, Comentario: $comentario");
-
-if ($folio <= 0 || $estatus === "") {
-    error_log("❌ Datos inválidos: folio=$folio, estatus=$estatus");
-    json_err("Datos inválidos");
-}
+if ($folio <= 0 || $estatus === "") json_err("Datos inválidos");
 
 try {
-    $pdo->beginTransaction();
+  $pdo->beginTransaction();
 
-    // Verificar que el equipo existe
-    $st = $pdo->prepare("SELECT id_equipo FROM equipos WHERE folio=? LIMIT 1");
-    $st->execute([$folio]);
-    $eq = $st->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$eq) { 
-        $pdo->rollBack(); 
-        error_log("❌ Folio no encontrado: $folio");
-        json_err("Folio no encontrado", 404); 
-    }
+  // Buscar estado por nombre
+  $st = $pdo->prepare("SELECT id_estado FROM estados WHERE nombre = ? LIMIT 1");
+  $st->execute([$estatus]);
+  $row = $st->fetch();
+  if (!$row) json_err("Estatus inválido", 400);
 
-    $id_equipo = (int)$eq["id_equipo"];
-    error_log("✅ Equipo encontrado: id_equipo=$id_equipo");
+  $id_estado = (int)$row["id_estado"];
 
-    // Obtener ID del estado
-    $stE = $pdo->prepare("SELECT id_estado FROM estados WHERE nombre=? LIMIT 1");
-    $stE->execute([$estatus]);
-    $es = $stE->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$es) { 
-        $pdo->rollBack(); 
-        error_log("❌ Estatus no encontrado: $estatus");
-        json_err("Estatus inválido", 400); 
-    }
+  // Verificar que el folio existe y obtener id_equipo
+  $check = $pdo->prepare("SELECT id_equipo FROM equipos WHERE folio = ?");
+  $check->execute([$folio]);
+  $equipo = $check->fetch();
+  if (!$equipo) {
+      $pdo->rollBack();
+      json_err("Folio no encontrado", 404);
+  }
 
-    $id_estado = (int)$es["id_estado"];
-    error_log("✅ Estado encontrado: id_estado=$id_estado");
+  $id_equipo = $equipo["id_equipo"];
 
-    // Actualizar equipo
-    $upd = $pdo->prepare("UPDATE equipos SET id_estado=? WHERE id_equipo=?");
-    $upd->execute([$id_estado, $id_equipo]);
-    
-    error_log("Rows affected by UPDATE: " . $upd->rowCount());
+  // Actualizar equipo
+  $up = $pdo->prepare("UPDATE equipos SET id_estado = ? WHERE folio = ? LIMIT 1");
+  $up->execute([$id_estado, $folio]);
 
-    if ($upd->rowCount() !== 1) {
-        $pdo->rollBack();
-        error_log("❌ No se actualizó el equipo");
-        json_err("No se actualizó el equipo", 500);
-    }
+  // Guardar historial
+  $pdo->prepare("
+    INSERT INTO historial_orden (id_equipo, id_estado, comentario, fecha_movimiento)
+    VALUES (?, ?, ?, NOW())
+  ")->execute([$id_equipo, $id_estado, $comentario]);
 
-    // Insertar en historial
-    $ins = $pdo->prepare("
-        INSERT INTO historial_orden (id_equipo, id_estado, comentario)
-        VALUES (?,?,?)
-    ");
-    $ins->execute([$id_equipo, $id_estado, $comentario]);
-    
-    error_log("✅ Historial insertado: " . $pdo->lastInsertId());
-
-    $pdo->commit();
-
-    json_ok([
-        "msg" => "Actualizado",
-        "folio" => $folio,
-        "estatus" => $estatus,
-        "id_estado" => $id_estado
-    ]);
-    
+  $pdo->commit();
+  json_ok();
 } catch (Exception $e) {
-    if ($pdo->inTransaction()) $pdo->rollBack();
-    error_log("❌ Excepción: " . $e->getMessage());
-    json_err("Error al actualizar: " . $e->getMessage(), 500);
+  if ($pdo->inTransaction()) $pdo->rollBack();
+  json_err("Error al actualizar estatus", 500);
 }

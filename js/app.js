@@ -1,29 +1,24 @@
 console.log("✅ app.js cargó");
 
 // ===== CONFIG ENDPOINT =====
-// Usar la misma estructura que otros endpoints que funcionan
-const EQUIPOS_STATUS_ENDPOINT = "api/equipos/update_status.php";
+const BASE_API = "api/";
+const EQUIPOS_STATUS_ENDPOINT = BASE_API + "equipos/update_status.php";
 
-// ===== API Helper con manejo de rutas =====
+// ===== API Helper =====
 async function apiFetch(path, options = {}) {
-  // Construir la URL completa para depuración
-  const fullUrl = new URL(path, window.location.origin + window.location.pathname).href;
-  console.log(`📡 Fetching: ${fullUrl}`);
-  
   try {
     const res = await fetch(path, {
       credentials: "same-origin",
       ...options,
       headers: {
         "Content-Type": "application/json",
+        ...(localStorage.getItem("token") ? { "Authorization": `Bearer ${localStorage.getItem("token")}` } : {}),
         ...(options.headers || {})
       }
     });
 
-    console.log(`📥 Status ${res.status} para ${path}`);
-    
     const text = await res.text();
-    console.log(`📥 Respuesta (primeros 200 chars):`, text.substring(0, 200));
+    console.log(`📥 Respuesta de ${path}:`, text.substring(0, 200)); // Log primeros 200 caracteres
     
     let data;
     try { 
@@ -113,6 +108,8 @@ function renderSidebarNav() {
     nav.innerHTML = `
       <a class="nav-link rounded-3 px-3 py-2" href="cliente-mis-equipos.html">Mis equipos</a>
       <a class="nav-link rounded-3 px-3 py-2" href="cliente-productos.html">Tienda</a>
+      <a class="nav-link rounded-3 px-3 py-2" href="cliente-mis-pedidos.html">Mis pedidos</a>
+
     `;
     return;
   }
@@ -123,12 +120,15 @@ function renderSidebarNav() {
   if (canVerEntregas(role))     links += `<a class="nav-link rounded-3 px-3 py-2" href="entregas.html">Entregas pendientes</a>`;
 
   links += `<div class="mt-2 px-3 text-uppercase text-secondary small fw-semibold">Naveganet</div>`;
-  if (canVerTienda(role))       links += `<a class="nav-link rounded-3 px-3 py-2" href="productos-admin.html">Productos</a>`;
-  if (canCrearUsuarios(role))   links += `<a class="nav-link rounded-3 px-3 py-2" href="naveganet-usuarios.html">Usuarios</a>`;
+  if (canVerTienda(role)) {
+    const paginaProductos = isAdminRole(role) ? "inventario.html" : "cliente-productos.html";
+    links += `<a class="nav-link rounded-3 px-3 py-2" href="${paginaProductos}">Productos</a>`;
+  }
+
+  if (canCrearUsuarios(role))   links += `<a class="nav-link rounded-3 px-3 py-2" href="gestionU.html">Usuarios</a>`;
 
   nav.innerHTML = links;
 }
-
 // ===== Protección =====
 function protectRoutes() {
   let page = window.location.pathname.split("/").pop();
@@ -140,10 +140,10 @@ function protectRoutes() {
   if (!isLogged()) { window.location.href = "login.html"; return; }
 
   const role = getSession()?.role || "";
-  const clientPages = ["cliente-mis-equipos.html", "cliente-productos.html"];
+  const clientPages = ["cliente-mis-equipos.html"];
   const staffPages  = [
     "dashboard.html", "equipos.html", "nuevo-equipo.html",
-    "detalle-equipo.html", "productos-admin.html", "naveganet-usuarios.html", "entregas.html"
+    "detalle-equipo.html", "productos-admin.html", "naveganet-usuarios.html", "entregas.html", "inventario.html"
   ];
 
   if (isCliente(role) && staffPages.includes(page))  { window.location.href = "cliente-mis-equipos.html"; return; }
@@ -229,11 +229,16 @@ function clearModalMsg() {
 // ================= DOMContentLoaded =================
 document.addEventListener("DOMContentLoaded", () => {
   console.log("📌 DOMContentLoaded");
-  console.log("📍 Current path:", window.location.pathname);
-  console.log("📍 Base URL:", window.location.origin);
   
   protectRoutes();
   renderSidebarNav();
+
+  // Topbar usuario
+  const topbar = document.getElementById("topbarUsuario");
+  if (topbar) {
+    const session = getSession();
+    if (session) topbar.textContent = `${session.role}: ${session.name}`;
+  }
 
   // Logout
   document.getElementById("btnLogout")?.addEventListener("click", () => {
@@ -255,12 +260,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (loginMsg) loginMsg.textContent = "Procesando...";
 
       try {
-        const data = await apiFetch("api/auth/login.php", {
+        const data = await apiFetch(BASE_API + "auth/login.php", {
           method: "POST",
           body: JSON.stringify({ email, password })
         });
 
         setSession({ name: data.user.nombre, email: data.user.email, role: data.user.rol, id: data.user.id_usuario });
+
+        // Guardar token si el backend lo envía (para móvil y también para web)
+        if (data.token) localStorage.setItem("token", data.token);
 
         window.location.href = isClient(data.user.rol)
           ? "cliente-mis-equipos.html"
@@ -284,9 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const password = (document.getElementById("regPass")?.value || "").trim();
       const password2 = (document.getElementById("regPass2")?.value || "").trim();
 
-      let rol = String(document.getElementById("regRole")?.value || "Cliente").trim();
-      const allowedRoles = ["Cliente", "Administrador"];
-      if (!allowedRoles.includes(rol)) rol = "Cliente";
+      let rol = "cliente"; // Por defecto, el registro es para clientes
 
       const okMsg = document.getElementById("regMsgOk");
       const errMsg = document.getElementById("regMsgErr");
@@ -315,14 +321,27 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       try {
-        await apiFetch("api/auth/register.php", {
+        await apiFetch(BASE_API + "auth/register.php", {
           method: "POST",
           body: JSON.stringify({ nombre, email, password, rol })
         });
 
-        okMsg?.classList.remove("d-none");
-        if (okMsg) okMsg.textContent = "Usuario creado ✅";
-        registerForm.reset();
+    okMsg?.classList.remove("d-none");
+    if (okMsg) okMsg.textContent = "Usuario creado ✅";
+    registerForm.reset();
+    setTimeout(async () => {
+      try {
+        const login = await apiFetch(BASE_API + "auth/login.php", {
+          method: "POST",
+          body: JSON.stringify({ email, password })
+        });
+        setSession({ name: login.user.nombre, email: login.user.email, role: login.user.rol, id: login.user.id_usuario });
+        if (login.token) localStorage.setItem("token", login.token);
+        window.location.href = "cliente-mis-equipos.html";
+      } catch {
+        window.location.href = "login.html";
+      }
+    }, 1000);
 
       } catch (err) {
         console.error("❌ Error register:", err);
@@ -356,7 +375,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!ok) return;
 
       try {
-        const data = await apiFetch("api/equipos/create.php", {
+        const data = await apiFetch(BASE_API + "equipos/create.php", {
           method: "POST",
           body: JSON.stringify({
             cliente: cliente.value.trim(),
@@ -403,7 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       try {
         console.log("🔄 Cargando equipos...");
-        const data = await apiFetch("api/equipos/list.php" + (params.toString() ? "?" + params.toString() : ""));
+        const data = await apiFetch(BASE_API + "equipos/list.php" + (params.toString() ? "?" + params.toString() : ""));
         const equipos = data.data || [];
         console.log(`✅ ${equipos.length} equipos cargados`);
 
@@ -566,7 +585,7 @@ if (smGuardar) {
         const email = (getSession()?.email || "").toLowerCase();
         console.log("📌 Cargando mis equipos para:", email);
         
-        const data = await apiFetch("api/equipos/mine.php?email=" + encodeURIComponent(email));
+        const data = await apiFetch(BASE_API + "equipos/mine.php?email=" + encodeURIComponent(email));
         const equipos = data.data || [];
 
         myEquiposBody.innerHTML = equipos.map(e => `
@@ -608,7 +627,7 @@ if (smGuardar) {
       try {
         console.log("📌 Cargando detalle para folio:", folio);
         
-        const det = await apiFetch("api/equipos/get.php?folio=" + encodeURIComponent(folio));
+        const det = await apiFetch(BASE_API + "equipos/get.php?folio=" + encodeURIComponent(folio));
         const d = det.data;
 
         document.getElementById("detFolio").textContent = d.folio;
@@ -619,7 +638,7 @@ if (smGuardar) {
         document.getElementById("detFecha").textContent = d.fecha_ingreso;
         document.getElementById("detFalla").textContent = d.falla;
 
-        const h = await apiFetch("api/historial/seguimiento.php?folio=" + encodeURIComponent(folio));
+        const h = await apiFetch(BASE_API + "historial/seguimiento.php?folio=" + encodeURIComponent(folio));
         const rows = h.data || [];
 
         histBody.innerHTML = rows.map(r => `
@@ -648,7 +667,7 @@ if (smGuardar) {
       try {
         console.log("📌 Cargando productos...");
         
-        const data = await apiFetch("api/productos/list.php");
+        const data = await apiFetch(BASE_API + "productos/list.php");
         const products = data.data || [];
 
         productsGrid.innerHTML = products.map(p => {
@@ -682,4 +701,449 @@ if (smGuardar) {
       }
     })();
   }
+
+  // ===== INVENTARIO (inventario.html) =====
+  const inventarioBody = document.getElementById("inventarioBody");
+  if (inventarioBody) {
+    if (!isAdminRole(getSession()?.role)) {
+  document.getElementById("btnNuevoProducto")?.classList.add("d-none");
+    }
+
+    let todosProductos = [];
+    let productoAEliminar = null;
+    let modoEdicion = false;
+
+    async function cargarInventario() {
+      try {
+        const data = await apiFetch(BASE_API + "productos/list.php");
+        todosProductos = data.data || [];
+        renderInventario(todosProductos);
+        actualizarContadoresInv(todosProductos);
+      } catch (err) {
+        inventarioBody.innerHTML = `<tr><td colspan="6" class="text-danger">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function actualizarContadoresInv(lista) {
+      document.getElementById("totalProductos").textContent = lista.length;
+      document.getElementById("totalStock").textContent = lista.filter(p => p.stock > 0).length;
+      document.getElementById("sinStock").textContent = lista.filter(p => p.stock <= 0).length;
+    }
+
+    function renderInventario(lista) {
+      const empty = document.getElementById("inventarioEmpty");
+      if (!lista.length) {
+        inventarioBody.innerHTML = "";
+        empty?.classList.remove("d-none");
+        return;
+      }
+      empty?.classList.add("d-none");
+      inventarioBody.innerHTML = lista.map(p => `
+        <tr>
+          <td class="text-secondary small">${p.id_producto}</td>
+          <td style="width:70px;">
+            ${p.imagen_url ? `<img src="${p.imagen_url}" style="width:60px;height:45px;object-fit:contain;">` : `<span class="text-secondary small">-</span>`}
+          </td>
+          <td class="fw-semibold">${p.nombre}</td>
+          <td>$${Number(p.precio).toFixed(2)} <span class="text-secondary small">MXN</span></td>
+          <td>
+            <span class="badge rounded-pill ${p.stock > 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}">
+              Stock: ${p.stock}
+            </span>
+          </td>
+          <td>
+            ${isAdminRole(getSession()?.role) ? `
+            <button class="btn btn-outline-secondary btn-sm me-1 btn-editar-prod" data-id="${p.id_producto}">Editar</button>
+            <button class="btn btn-outline-danger btn-sm btn-eliminar-prod" data-id="${p.id_producto}">Eliminar</button>
+          ` : '-'}
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function filtrarInventario() {
+      const texto = document.getElementById("searchInput").value.toLowerCase();
+      const stock = document.getElementById("stockFilter").value;
+      const lista = todosProductos.filter(p => {
+        const matchTexto = p.nombre.toLowerCase().includes(texto) || String(p.id_producto).includes(texto);
+        const matchStock = stock === "" ? true : stock === "con" ? p.stock > 0 : p.stock <= 0;
+        return matchTexto && matchStock;
+      });
+      renderInventario(lista);
+    }
+
+    document.getElementById("searchInput")?.addEventListener("input", filtrarInventario);
+    document.getElementById("stockFilter")?.addEventListener("change", filtrarInventario);
+    document.getElementById("btnClear")?.addEventListener("click", () => {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("stockFilter").value = "";
+      renderInventario(todosProductos);
+    });
+
+    // Abrir modal nuevo
+    document.getElementById("btnNuevoProducto")?.addEventListener("click", () => {
+      modoEdicion = false;
+      document.getElementById("modalProductoTitulo").textContent = "Nuevo producto";
+      document.getElementById("productoId").value = "";
+      document.getElementById("prodNombre").value = "";
+      document.getElementById("prodPrecio").value = "";
+      document.getElementById("prodStock").value = "";
+      document.getElementById("prodImagen").value = "";
+      document.getElementById("prodErr").classList.add("d-none");
+      document.getElementById("prodMsg").classList.add("d-none");
+    });
+
+    // Editar
+    inventarioBody.addEventListener("click", (e) => {
+      const btnEditar = e.target.closest(".btn-editar-prod");
+      if (btnEditar) {
+        const id = btnEditar.dataset.id;
+        const p = todosProductos.find(x => String(x.id_producto) === String(id));
+        if (!p) return;
+        modoEdicion = true;
+        document.getElementById("modalProductoTitulo").textContent = "Editar producto";
+        document.getElementById("productoId").value = p.id_producto;
+        document.getElementById("prodNombre").value = p.nombre;
+        document.getElementById("prodPrecio").value = p.precio;
+        document.getElementById("prodStock").value = p.stock;
+        document.getElementById("prodImagen").value = "";
+        document.getElementById("prodErr").classList.add("d-none");
+        document.getElementById("prodMsg").classList.add("d-none");
+        new bootstrap.Modal(document.getElementById("modalProducto")).show();
+      }
+
+      const btnEliminar = e.target.closest(".btn-eliminar-prod");
+      if (btnEliminar) {
+        productoAEliminar = btnEliminar.dataset.id;
+        new bootstrap.Modal(document.getElementById("modalEliminar")).show();
+      }
+    });
+
+    // Guardar (crear o editar)
+    document.getElementById("btnGuardarProducto")?.addEventListener("click", async () => {
+      const nombre = document.getElementById("prodNombre").value.trim();
+      const precio = document.getElementById("prodPrecio").value;
+      const stock = document.getElementById("prodStock").value;
+      const imagen = document.getElementById("prodImagen").files[0];
+      const err = document.getElementById("prodErr");
+      const msg = document.getElementById("prodMsg");
+
+      err.classList.add("d-none");
+      msg.classList.add("d-none");
+
+      if (!nombre || precio === "" || stock === "") {
+        err.textContent = "Completa los campos obligatorios.";
+        err.classList.remove("d-none");
+        return;
+      }
+
+      const endpoint = modoEdicion
+        ? BASE_API + "productos/update.php"
+        : BASE_API + "productos/create.php";
+
+      const body = { nombre, precio: parseFloat(precio), stock: parseInt(stock), imagen: "" };
+      if (modoEdicion) body.id = document.getElementById("productoId").value;
+
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { 
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}` 
+          },
+          body: JSON.stringify(body)
+        });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch { throw new Error("Respuesta no JSON"); }
+        if (!res.ok || data.ok === false) throw new Error(data.error || "Error al guardar");
+
+        msg.textContent = modoEdicion ? "Producto actualizado ✅" : "Producto creado ✅";
+        msg.classList.remove("d-none");
+        setTimeout(() => {
+          bootstrap.Modal.getInstance(document.getElementById("modalProducto")).hide();
+          cargarInventario();
+        }, 1000);
+      } catch (e) {
+        err.textContent = e.message;
+        err.classList.remove("d-none");
+      }
+    });
+
+
+
+    // Confirmar eliminar
+    document.getElementById("btnConfirmarEliminar")?.addEventListener("click", async () => {
+      try {
+        await apiFetch(BASE_API + "productos/delete.php", {
+          method: "POST",
+          body: JSON.stringify({ id: productoAEliminar })
+        });
+        bootstrap.Modal.getInstance(document.getElementById("modalEliminar")).hide();
+        cargarInventario();
+      } catch (e) {
+        console.error("Error eliminando:", e);
+      }
+    });
+
+    cargarInventario();
+  }
+
+// ===== USUARIOS (naveganet-usuarios.html) =====
+  const usuariosBody = document.getElementById("usuariosBody");
+  if (usuariosBody) {
+    let todosUsuarios = [];
+    let usuarioAEliminar = null;
+    let modoEdicionUsuario = false;
+
+    async function cargarUsuarios() {
+      try {
+        const data = await apiFetch(BASE_API + "usuarios/list.php");
+        todosUsuarios = data.data || [];
+        renderUsuarios(todosUsuarios);
+        actualizarContadoresUsuarios(todosUsuarios);
+      } catch (err) {
+        usuariosBody.innerHTML = `<tr><td colspan="6" class="text-danger">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function rolBadge(rol) {
+      const r = normRole(rol);
+      if (r === "administrador" || r === "admin") return "text-bg-primary";
+      if (r === "tecnico")  return "text-bg-warning";
+      if (r === "empleado") return "text-bg-info";
+      return "text-bg-light border";
+    }
+
+    function actualizarContadoresUsuarios(lista) {
+      document.getElementById("totalUsuarios").textContent = lista.length;
+      document.getElementById("totalAdmins").textContent   = lista.filter(u => normRole(u.rol) === "administrador" || normRole(u.rol) === "admin").length;
+      document.getElementById("totalTecnicos").textContent = lista.filter(u => normRole(u.rol) === "tecnico").length;
+      document.getElementById("totalClientes").textContent = lista.filter(u => normRole(u.rol) === "cliente").length;
+    }
+
+    function renderUsuarios(lista) {
+      const empty = document.getElementById("usuariosEmpty");
+      if (!lista.length) {
+        usuariosBody.innerHTML = "";
+        empty?.classList.remove("d-none");
+        return;
+      }
+      empty?.classList.add("d-none");
+      usuariosBody.innerHTML = lista.map(u => `
+        <tr>
+          <td class="text-secondary small">${u.id_usuario ?? u.id}</td>
+          <td class="fw-semibold">${u.nombre}</td>
+          <td class="text-secondary">${u.email}</td>
+          <td><span class="badge ${rolBadge(u.rol)}">${u.rol}</span></td>
+          <td class="text-secondary small">${u.fecha_registro ?? "-"}</td>
+          <td>
+            <button class="btn btn-outline-secondary btn-sm me-1 btn-editar-usuario"
+              data-id="${u.id_usuario ?? u.id}"
+              data-nombre="${u.nombre}"
+              data-email="${u.email}"
+              data-rol="${u.rol}">Editar</button>
+            <button class="btn btn-outline-danger btn-sm btn-eliminar-usuario"
+              data-id="${u.id_usuario ?? u.id}">Eliminar</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    // Filtrar
+    function filtrarUsuarios() {
+      const texto = document.getElementById("searchUsuario").value.toLowerCase();
+      const rol   = document.getElementById("rolFilter").value.toLowerCase();
+      const lista = todosUsuarios.filter(u => {
+        const matchTexto = u.nombre.toLowerCase().includes(texto) || u.email.toLowerCase().includes(texto);
+        const matchRol   = rol === "" ? true : normRole(u.rol) === rol;
+        return matchTexto && matchRol;
+      });
+      renderUsuarios(lista);
+    }
+
+    document.getElementById("searchUsuario")?.addEventListener("input", filtrarUsuarios);
+    document.getElementById("rolFilter")?.addEventListener("change", filtrarUsuarios);
+    document.getElementById("btnClearUsuarios")?.addEventListener("click", () => {
+      document.getElementById("searchUsuario").value = "";
+      document.getElementById("rolFilter").value = "";
+      renderUsuarios(todosUsuarios);
+    });
+
+    // Abrir modal nuevo
+    document.getElementById("btnNuevoUsuario")?.addEventListener("click", () => {
+      modoEdicionUsuario = false;
+      document.getElementById("modalUsuarioTitulo").textContent = "Nuevo usuario";
+      document.getElementById("usuarioId").value = "";
+      document.getElementById("uNombre").value = "";
+      document.getElementById("uEmail").value = "";
+      document.getElementById("uPassword").value = "";
+      document.getElementById("uPassword").required = true;
+      document.getElementById("uPasswordHint").textContent = "";
+      document.getElementById("uRol").value = "Cliente";
+      document.getElementById("btnGuardarUsuario").textContent = "Crear usuario";
+      document.getElementById("uErr").classList.add("d-none");
+      document.getElementById("uMsg").classList.add("d-none");
+    });
+
+    // Delegación de eventos en la tabla
+    usuariosBody.addEventListener("click", (e) => {
+      // Editar
+      const btnEditar = e.target.closest(".btn-editar-usuario");
+      if (btnEditar) {
+        modoEdicionUsuario = true;
+        document.getElementById("modalUsuarioTitulo").textContent = "Editar usuario";
+        document.getElementById("usuarioId").value  = btnEditar.dataset.id;
+        document.getElementById("uNombre").value    = btnEditar.dataset.nombre;
+        document.getElementById("uEmail").value     = btnEditar.dataset.email;
+        document.getElementById("uPassword").value  = "";
+        document.getElementById("uPassword").required = false;
+        document.getElementById("uPasswordHint").textContent = "Deja en blanco para no cambiar la contraseña";
+        document.getElementById("uRol").value       = btnEditar.dataset.rol;
+        document.getElementById("btnGuardarUsuario").textContent = "Guardar cambios";
+        document.getElementById("uErr").classList.add("d-none");
+        document.getElementById("uMsg").classList.add("d-none");
+        new bootstrap.Modal(document.getElementById("modalUsuario")).show();
+      }
+
+      // Eliminar
+      const btnEliminar = e.target.closest(".btn-eliminar-usuario");
+      if (btnEliminar) {
+        usuarioAEliminar = btnEliminar.dataset.id;
+        bootstrap.Modal.getOrCreateInstance(document.getElementById("modalEliminarUsuario")).show();
+      }
+    });
+
+    // Guardar (crear o editar)
+    document.getElementById("btnGuardarUsuario")?.addEventListener("click", async () => {
+      const nombre   = document.getElementById("uNombre").value.trim();
+      const email    = document.getElementById("uEmail").value.trim().toLowerCase();
+      const password = document.getElementById("uPassword").value.trim();
+      const rol      = document.getElementById("uRol").value;
+      const err = document.getElementById("uErr");
+      const msg = document.getElementById("uMsg");
+
+      err.classList.add("d-none");
+      msg.classList.add("d-none");
+
+      if (!nombre || !email) {
+        err.textContent = "Nombre y correo son obligatorios.";
+        err.classList.remove("d-none");
+        return;
+      }
+      if (!email.includes("@")) {
+        err.textContent = "El correo no es válido.";
+        err.classList.remove("d-none");
+        return;
+      }
+      if (!modoEdicionUsuario && password.length < 6) {
+        err.textContent = "La contraseña debe tener al menos 6 caracteres.";
+        err.classList.remove("d-none");
+        return;
+      }
+      if (modoEdicionUsuario && password && password.length < 6) {
+        err.textContent = "La contraseña debe tener al menos 6 caracteres.";
+        err.classList.remove("d-none");
+        return;
+      }
+
+      try {
+        if (modoEdicionUsuario) {
+          const body = { id: document.getElementById("usuarioId").value, nombre, email, rol };
+          if (password) body.password = password;
+          await apiFetch(BASE_API + "usuarios/update.php", {
+            method: "POST",
+            body: JSON.stringify(body)
+          });
+        } else {
+          await apiFetch(BASE_API + "usuarios/create.php", {
+            method: "POST",
+            body: JSON.stringify({ nombre, email, password, rol })
+          });
+        }
+
+        msg.textContent = modoEdicionUsuario ? "Usuario actualizado ✅" : "Usuario creado ✅";
+        msg.classList.remove("d-none");
+
+        setTimeout(() => {
+          bootstrap.Modal.getInstance(document.getElementById("modalUsuario")).hide();
+          cargarUsuarios();
+        }, 1000);
+
+      } catch (e) {
+        err.textContent = e.message || "No se pudo guardar el usuario.";
+        err.classList.remove("d-none");
+      }
+    });
+
+    // Confirmar eliminar
+    document.getElementById("btnConfirmarEliminarUsuario")?.addEventListener("click", async () => {
+      try {
+        await apiFetch(BASE_API + "usuarios/delete.php", {
+          method: "POST",
+          body: JSON.stringify({ id: usuarioAEliminar })
+        });
+        bootstrap.Modal.getOrCreateInstance(document.getElementById("modalEliminarUsuario")).hide();
+        cargarUsuarios();
+      } catch (e) {
+        console.error("Error eliminando usuario:", e);
+      }
+    });
+
+    cargarUsuarios();
+  }
+
+  // ===== DASHBOARD =====
+  const kpiTotal = document.getElementById("kpiTotal");
+  if (kpiTotal) {
+    (async () => {
+      try {
+        const session = getSession();
+
+        // Mostrar nombre del usuario en el topbar
+        const spanUsuario = document.querySelector("header .fw-semibold");
+        if (spanUsuario && session?.name) spanUsuario.textContent = session.name;
+
+        // Cargar todos los equipos
+        const data = await apiFetch(BASE_API + "equipos/list.php");
+        const equipos = data.data || [];
+
+        // KPIs
+        document.getElementById("kpiTotal").textContent  = equipos.length;
+        document.getElementById("kpiDiag").textContent   = equipos.filter(e => e.estatus === "Diagnóstico").length;
+        document.getElementById("kpiRep").textContent    = equipos.filter(e => e.estatus === "Reparación").length;
+        document.getElementById("kpiListo").textContent  = equipos.filter(e => e.estatus === "Listo").length;
+
+        // Últimos 5 registros
+        const recientes = [...equipos].slice(0, 5);
+        const tbody = document.getElementById("tblRecientes");
+
+        if (!recientes.length) {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-secondary text-center py-3">No hay registros aún.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = recientes.map(e => `
+          <tr>
+            <td class="fw-semibold">${e.folio}</td>
+            <td>${e.cliente}</td>
+            <td>${e.tipo_equipo} - ${e.modelo}</td>
+            <td><span class="badge ${badgeClass(e.estatus)}">${e.estatus}</span></td>
+            <td class="text-secondary small">${e.fecha_ingreso}</td>
+          </tr>
+        `).join("");
+
+      } catch (err) {
+        console.error("❌ Error cargando dashboard:", err);
+        document.getElementById("tblRecientes").innerHTML =
+          `<tr><td colspan="5" class="text-danger">Error: ${err.message}</td></tr>`;
+      }
+    })();
+  }
+
+  
+
+
+
 });

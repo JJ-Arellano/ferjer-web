@@ -6,72 +6,49 @@ require_once __DIR__ . "/../config/db.php";
 require_once __DIR__ . "/../helpers/response.php";
 require_once __DIR__ . "/../helpers/auth.php";
 
-$user = require_login();
-$rol  = strtolower($user["rol"] ?? "");
+only_roles(["Administrador", "Empleado"]);
 
-// Solo Admin y Empleado
-if (!in_array($rol, ["administrador", "empleado"])) json_err("Acceso denegado", 403);
+$method = $_SERVER["REQUEST_METHOD"] ?? "GET";
 
-// ===== GET: listar entregas pendientes =====
-if ($_SERVER["REQUEST_METHOD"] === "GET") {
-    try {
-        $st = $pdo->prepare("
-            SELECT 
-                pd.id_pedido,
-                pd.estatus,
-                pd.total,
-                pd.fecha_pedido,
-                pd.notas,
-                u.nombre AS cliente,
-                u.email  AS email,
-                GROUP_CONCAT(p.nombre, ' x', pi.cantidad ORDER BY p.nombre SEPARATOR ', ') AS productos
-            FROM pedidos pd
-            JOIN usuarios u ON u.id_usuario = pd.id_usuario
-            JOIN pedido_items pi ON pi.id_pedido = pd.id_pedido
-            JOIN productos p ON p.id_producto = pi.id_producto
-            WHERE pd.estatus IN ('Pagado', 'Listo')
-            GROUP BY pd.id_pedido
-            ORDER BY pd.fecha_pedido ASC
-        ");
-        $st->execute();
-        $entregas = $st->fetchAll(PDO::FETCH_ASSOC);
-
-        json_ok(["data" => array_map(fn($e) => [
-            "id_pedido"    => (int)$e["id_pedido"],
-            "estatus"      => $e["estatus"],
-            "total"        => (float)$e["total"],
-            "fecha_pedido" => $e["fecha_pedido"],
-            "notas"        => $e["notas"] ?? "",
-            "cliente"      => $e["cliente"],
-            "email"        => $e["email"],
-            "productos"    => $e["productos"]
-        ], $entregas)]);
-
-    } catch (Exception $e) {
-        json_err("Error al obtener entregas: " . $e->getMessage(), 500);
-    }
+if ($method === "GET") {
+  try {
+    $st = $pdo->query("
+      SELECT
+        p.id_pedido,
+        u.nombre        AS cliente,
+        u.email         AS email,
+        p.total,
+        p.estatus,
+        p.fecha_pedido  AS fecha_pedido,
+        GROUP_CONCAT(pr.nombre SEPARATOR ', ') AS productos
+      FROM pedidos p
+      JOIN usuarios u ON u.id_usuario = p.id_usuario
+      LEFT JOIN pedido_items pi ON pi.id_pedido = p.id_pedido
+      LEFT JOIN productos pr ON pr.id_producto = pi.id_producto
+      WHERE p.estatus IN ('Pagado','Listo')
+      GROUP BY p.id_pedido, u.nombre, u.email, p.total, p.estatus, p.fecha_pedido
+      ORDER BY p.id_pedido DESC
+      LIMIT 300
+    ");
+    json_ok(["data" => $st->fetchAll()]);
+  } catch (Exception $e) {
+    json_err("Error al listar entregas", 500);
+  }
 }
 
-// ===== POST: marcar como Entregado =====
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $in = read_json_body();
-    $id_pedido = (int)($in["id_pedido"] ?? 0);
+// Marcar como entregado
+if ($method === "POST") {
+  $in = read_json_body();
+  $id_pedido = (int)($in["id_pedido"] ?? 0);
+  if ($id_pedido <= 0) json_err("Pedido inválido", 400);
 
-    if ($id_pedido <= 0) json_err("Pedido inválido", 400);
-
-    try {
-        $st = $pdo->prepare("SELECT id_pedido FROM pedidos WHERE id_pedido = ? AND estatus IN ('Pagado','Listo') LIMIT 1");
-        $st->execute([$id_pedido]);
-        if (!$st->fetch()) json_err("Pedido no encontrado o ya entregado", 404);
-
-        $upd = $pdo->prepare("UPDATE pedidos SET estatus = 'Entregado', fecha_entrega = NOW() WHERE id_pedido = ?");
-        $upd->execute([$id_pedido]);
-
-        json_ok(["msg" => "Pedido marcado como entregado", "id_pedido" => $id_pedido]);
-
-    } catch (Exception $e) {
-        json_err("Error al marcar entrega: " . $e->getMessage(), 500);
-    }
+  try {
+    $st = $pdo->prepare("UPDATE pedidos SET estatus='Entregado' WHERE id_pedido=?");
+    $st->execute([$id_pedido]);
+    json_ok();
+  } catch (Exception $e) {
+    json_err("Error al actualizar entrega", 500);
+  }
 }
 
 json_err("Método no permitido", 405);

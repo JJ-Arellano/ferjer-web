@@ -2,6 +2,8 @@
 require_once __DIR__ . "/../config/db.php";
 require_once __DIR__ . "/../helpers/response.php";
 
+if ($_SERVER["REQUEST_METHOD"] !== "GET") json_err("Método no permitido", 405);
+
 $folio = (int)($_GET["folio"] ?? 0);
 if ($folio <= 0) json_err("Folio inválido");
 
@@ -21,7 +23,7 @@ try {
     FROM historial_orden ho
     JOIN estados s ON s.id_estado = ho.id_estado
     WHERE ho.id_equipo = ?
-    ORDER BY ho.id_historial DESC
+    ORDER BY ho.fecha_movimiento DESC
     LIMIT 200
   ");
   $h->execute([$id_equipo]);

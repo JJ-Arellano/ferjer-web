@@ -5,6 +5,8 @@ require_once __DIR__ . "/../config/db.php";
 require_once __DIR__ . "/../helpers/response.php";
 require_once __DIR__ . "/../helpers/auth.php";
 
+$user = require_login();
+only_roles(["Cliente","Administrador"]);
 if ($_SERVER["REQUEST_METHOD"] !== "POST") json_err("Método no permitido", 405);
 
 $user = require_login();

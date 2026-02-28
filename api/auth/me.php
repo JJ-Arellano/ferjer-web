@@ -1,6 +1,6 @@
 <?php
+require_once __DIR__ . "/../helpers/auth.php";
 require_once __DIR__ . "/../helpers/response.php";
-session_start();
 
-if (!isset($_SESSION["user"])) json_err("No autenticado", 401);
-json_ok(["user" => $_SESSION["user"]]);
+$user = require_login();
+json_ok(["user" => $user]);
