@@ -1,27 +1,30 @@
+/* =========================
+   BASE
+========================= */
 .rounded-4 { border-radius: 1rem !important; }
-
-
-
-.login-card{
-  width: 100%;
-  max-width: 460px;
-}
 
 body {
   font-family: 'Segoe UI', sans-serif;
 }
 
-.card {
-  border: none;
+/* Cards base */
+.card { border: none; }
+
+/* Login card */
+.login-card{
+  width: 100%;
+  max-width: 460px;
 }
 
+/* Botón dark base (si lo usas) */
 .btn-dark {
   background-color: #343a40;
   border: none;
 }
 
-
-/* Sidebar fija */
+/* =========================
+   SIDEBAR (para otras vistas)
+========================= */
 .sidebar{
   width: 260px;
   min-height: 100vh;
@@ -43,4 +46,651 @@ body {
 .sidebar .nav-link.active{
   background: #e8f0ff;
   color: #0b5ed7;
+}
+
+/* =========================
+   THEME: FERJER + SPACE (APP)
+========================= */
+:root{
+  --app-bg: #070A14;
+
+  --app-text: #E5E7EB;
+  --app-muted: rgba(229,231,235,.68);
+
+  /* base FERJER */
+  --ferjer-blue: #2E6FA3;
+  --ferjer-dark: #1F4E73;
+
+  /* acentos space */
+  --cyan: #22D3EE;
+  --purple: #A78BFA;
+  --blue: #3B82F6;
+
+  --border: rgba(255,255,255,.12);
+  --shadow: 0 16px 50px rgba(0,0,0,.45);
+}
+
+/* Fondo */
+.app-space{
+  min-height: 100vh;
+  color: var(--app-text);
+  background:
+    radial-gradient(1100px 520px at 18% 8%, rgba(34,211,238,.10), transparent 60%),
+    radial-gradient(900px 520px at 82% 18%, rgba(167,139,250,.10), transparent 55%),
+    radial-gradient(900px 650px at 55% 95%, rgba(46,111,163,.18), transparent 60%),
+    var(--app-bg);
+}
+
+.text-app{ color: var(--app-text) !important; }
+.text-app-muted{ color: var(--app-muted) !important; }
+
+/* Navbar */
+.app-navbar{
+  background: rgba(7,10,20,.70) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Marca siempre blanca */
+.app-navbar .navbar-brand{
+  color: #ffffff !important;
+  text-shadow: 0 0 10px rgba(34,211,238,.20);
+}
+
+/* ===== BRAND DOT con ÓRBITA ===== */
+.brand-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--cyan) 0%, var(--blue) 100%);
+  position: relative;
+  box-shadow: 0 0 12px rgba(34,211,238,.7);
+  flex: 0 0 auto;
+}
+
+/* Aro orbital girando */
+.brand-dot::after{
+  content: "";
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(167,139,250,.35);
+  top: -8px;
+  left: -8px;
+  animation: orbit 6s linear infinite;
+  opacity: .85;
+}
+
+/* Animación */
+@keyframes orbit {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Hero background sutil */
+.hero-app{
+  background: linear-gradient(
+    180deg,
+    rgba(31,78,115,.18) 0%,
+    rgba(46,111,163,.08) 55%,
+    rgba(7,10,20,0) 100%
+  );
+}
+
+/* Cards */
+.card-app{
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+/* Botones */
+.btn-app{
+  background: linear-gradient(135deg, var(--ferjer-dark), var(--blue));
+  border: 1px solid rgba(255,255,255,.16);
+  color: #06101f;
+  font-weight: 800;
+}
+.btn-app:hover{
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  color: #06101f;
+}
+
+.btn-app-outline{
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.55);
+  color: var(--app-text);
+}
+.btn-app-outline:hover{
+  background: rgba(255,255,255,.10);
+  border-color: rgba(34,211,238,.55);
+  color: var(--app-text);
+}
+
+.btn-app-ghost{
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.16);
+  color: var(--app-text);
+}
+.btn-app-ghost:hover{
+  background: rgba(255,255,255,.14);
+  border-color: rgba(167,139,250,.40);
+  color: var(--app-text);
+}
+
+/* Badges */
+.badge-app{
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.14);
+  color: var(--app-text);
+  font-weight: 600;
+}
+
+/* Detalles */
+.kicker{
+  font-size: .78rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(229,231,235,.72);
+}
+
+.border-app{
+  border-color: rgba(255,255,255,.12) !important;
+  opacity: 1;
+}
+
+.stat-app{
+  padding: .75rem .85rem;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: .9rem;
+  background: rgba(0,0,0,.18);
+}
+.stat-label{
+  font-size: .8rem;
+  color: rgba(229,231,235,.70);
+}
+.stat-value{
+  font-weight: 800;
+  color: var(--app-text);
+}
+
+.divider-app{
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34,211,238,.35), rgba(167,139,250,.25), transparent);
+  opacity: .9;
+}
+
+/* Footer */
+.footer-app{
+  background: rgba(7,10,20,.72);
+  border-top: 1px solid var(--border);
+}
+
+/* =========================
+   LOGIN (APP THEME)
+========================= */
+.login-wrap{
+  /* para que no se vea “plano” encima del fondo */
+  background: linear-gradient(
+    180deg,
+    rgba(7,10,20,.35) 0%,
+    rgba(7,10,20,.10) 100%
+  );
+}
+
+.login-card-shell{
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+/* Imagen lateral */
+.login-side-img{
+  border-radius: 1rem 0 0 1rem;
+  object-fit: cover;
+  filter: saturate(1.05) contrast(1.05);
+}
+
+/* Inputs estilo “glass” */
+.input-app{
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  color: var(--app-text) !important;
+}
+
+.input-app::placeholder{
+  color: rgba(229,231,235,.45) !important;
+}
+
+.input-app:focus{
+  border-color: rgba(34,211,238,.55) !important;
+  box-shadow: 0 0 0 .25rem rgba(34,211,238,.18) !important;
+}
+
+/* Links */
+.link-app{
+  color: rgba(34,211,238,.95);
+  text-decoration: none;
+}
+.link-app:hover{
+  color: rgba(167,139,250,.95);
+  text-decoration: underline;
+}
+
+/* Alert para que combine un poco mejor */
+.alert-danger{
+  background: rgba(220,53,69,.15);
+  border: 1px solid rgba(220,53,69,.35);
+  color: #ffd3d8;
+}
+
+/* Register image */
+.register-side-img{
+  border-radius: 0 1rem 1rem 0;
+  object-fit: cover;
+  filter: saturate(1.05) contrast(1.05);
+}
+
+/* Alert success más acorde al tema */
+.alert-success{
+  background: rgba(25,135,84,.15);
+  border: 1px solid rgba(25,135,84,.35);
+  color: #d7ffe9;
+}
+
+/* =========================
+   DASHBOARD (APP THEME) — CORREGIDO
+========================= */
+
+/* Sidebar oscura */
+.sidebar-app{
+  background: rgba(7,10,20,.72);
+  border-right: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+
+/* Links generados por JS */
+.sidebar-app .nav-link{
+  color: rgba(229,231,235,.86);
+  font-weight: 600;
+  border-radius: 12px;
+  margin: 2px 10px;
+  padding: .6rem .8rem;
+}
+
+.sidebar-app .nav-link:hover{
+  background: rgba(255,255,255,.08);
+  color: var(--app-text);
+}
+
+.sidebar-app .nav-link.active{
+  background: linear-gradient(135deg, rgba(59,130,246,.22), rgba(34,211,238,.14));
+  border: 1px solid rgba(34,211,238,.22);
+  color: var(--app-text);
+}
+
+/* Topbar */
+.topbar-app{
+  background: rgba(7,10,20,.55);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+
+/* KPI cards */
+.kpi-card{
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before{
+  content:"";
+  position:absolute;
+  inset:-60px -60px auto auto;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle at 30% 30%, rgba(34,211,238,.22), transparent 60%);
+  filter: blur(2px);
+}
+
+/* =========================
+   TABLA (glass oscura + texto visible)
+   REQUIERE: envolver table-responsive con class="table-shell"
+   <div class="table-responsive table-shell"> ... </div>
+========================= */
+
+.table-shell{
+  border-radius: 16px;
+  overflow: hidden;               /* CLAVE para el radius */
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  backdrop-filter: blur(8px);
+}
+
+/* Tabla base */
+.table-app{
+  margin-bottom: 0;
+  color: rgba(229,231,235,.92);
+}
+
+/* Head */
+.table-app thead{
+  background: rgba(255,255,255,.08);
+}
+
+.table-app thead th{
+  color: rgba(255,255,255,.86);
+  font-weight: 800;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  background: transparent;
+}
+
+/* Body rows */
+.table-app tbody tr{
+  background: rgba(255,255,255,.05);
+  transition: background .20s ease;
+}
+
+.table-app tbody td{
+  color: #1F2937 !important; /* azul oscuro tipo SaaS */
+  font-weight: 600;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+/* Hover elegante (sin mover layout) */
+.table-app.table-hover tbody tr:hover{
+  background: linear-gradient(
+    135deg,
+    rgba(34,211,238,.14),
+    rgba(167,139,250,.10)
+  );
+}
+
+/* Badges/estatus (si el JS mete badge o tú usas .badge-status) */
+.badge-status,
+.table-app .badge{
+  background: rgba(34,211,238,.18);
+  border: 1px solid rgba(34,211,238,.35);
+  color: #ffffff;
+  font-weight: 800;
+  padding: .35em .75em;
+  border-radius: 999px;
+}
+
+/* Detalle de equipo mejoras */
+
+.badge-status{
+  background: linear-gradient(135deg, rgba(34,211,238,.20), rgba(167,139,250,.18));
+  border: 1px solid rgba(34,211,238,.35);
+  color: #ffffff;
+  font-weight: 800;
+  border-radius: 999px;
+}
+
+/* Historial tabla hereda estilos de table-app */
+.table-app thead th{
+  font-weight: 800;
+}
+
+.table-app tbody td{
+  font-weight: 600;
+}
+
+/* =========================
+   EQUIPOS + MODAL (APP THEME)
+========================= */
+
+/* Selects/inputs ya usan .input-app del login.
+   Solo aseguramos que select/textarea se vean iguales */
+select.input-app,
+textarea.input-app{
+  appearance: none;
+}
+
+/* En tabla de equipos, acciones a la derecha se ven mejor */
+.table-app td:last-child,
+.table-app th:last-child{
+  text-align: right;
+}
+
+/* Modal tema oscuro */
+.modal-app{
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 24px 80px rgba(0,0,0,.55);
+  backdrop-filter: blur(10px);
+  color: var(--app-text);
+}
+
+/* Bordes en modal */
+.modal-app .border-app{
+  border-color: rgba(255,255,255,.12) !important;
+}
+
+/* Para que el textarea no quede muy claro */
+.modal-app .input-app{
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  color: var(--app-text) !important;
+}
+
+/* Ajuste de alert success en modal */
+.modal-app .alert-success{
+  background: rgba(25,135,84,.15);
+  border: 1px solid rgba(25,135,84,.35);
+  color: #d7ffe9;
+}
+
+select.input-app option{
+  color: #111827;
+}
+
+/* =========================
+   ENTREGAS (APP THEME)
+========================= */
+
+/* Botón entregar más integrado */
+.btn-entregar{
+  font-weight: 700;
+}
+
+/* Ajuste badge dentro de tabla */
+.table-app .badge{
+  font-weight: 800;
+}
+
+/* Modal oscuro */
+.modal-app{
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 24px 80px rgba(0,0,0,.55);
+  backdrop-filter: blur(10px);
+  color: var(--app-text);
+}
+
+/* Roles como badge (opcional) */
+.badge-role{
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.14);
+  color: #ffffff;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: .35em .75em;
+}
+
+/* =========================
+   PRODUCTOS (APP THEME)
+========================= */
+
+.prod-thumb{
+  width: 70px;
+  height: 50px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  padding: 6px;
+}
+
+/* Badge stock más bonito */
+.badge-stock{
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.14);
+  color: #0F172A;            /* azul oscuro para que se lea */
+  font-weight: 800;
+  border-radius: 999px;
+  padding: .35em .75em;
+}
+
+/* =========================
+   INVENTARIO (EXTRAS)
+========================= */
+
+/* Acciones alineadas */
+.table-app td:last-child,
+.table-app th:last-child{
+  text-align: right;
+}
+
+/* Badge stock elegante */
+.badge-stock{
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.14);
+  color: #0F172A;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: .35em .75em;
+}
+
+/* Validación bootstrap en tema oscuro */
+.input-app.is-invalid,
+.was-validated .input-app:invalid{
+  border-color: rgba(220,53,69,.65) !important;
+  box-shadow: 0 0 0 .25rem rgba(220,53,69,.18) !important;
+}
+
+.input-app.is-valid,
+.was-validated .input-app:valid{
+  border-color: rgba(25,135,84,.55) !important;
+  box-shadow: 0 0 0 .25rem rgba(25,135,84,.16) !important;
+}
+
+.invalid-feedback{
+  color: rgba(255,195,201,.95);
+}
+
+/* =========================
+   TIENDA (APP THEME)
+========================= */
+
+/* Card producto */
+.card-product-app{
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 16px 50px rgba(0,0,0,.30);
+  backdrop-filter: blur(10px);
+}
+
+.product-card{
+  transition: transform .15s ease, box-shadow .15s ease;
+  cursor: pointer;
+}
+.product-card:hover{
+  transform: translateY(-3px);
+  box-shadow: 0 18px 60px rgba(0,0,0,.45);
+}
+
+/* Media producto */
+.product-media{
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(255,255,255,.10);
+}
+.product-img{
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  padding: 10px;
+}
+
+/* Botón flotante carrito */
+.cart-badge{
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+}
+.cart-count{
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #dc3545;
+  color: #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Offcanvas oscuro */
+.offcanvas-app{
+  background: rgba(7,10,20,.82);
+  border-left: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(12px);
+  color: var(--app-text);
+}
+
+/* Inputs tarjeta */
+.card-input{ letter-spacing: 2px; }
+
+/* Filas del carrito */
+.cart-row{
+  border-color: rgba(255,255,255,.10) !important;
+}
+
+/* =========================
+   MIS PEDIDOS (APP THEME)
+========================= */
+
+.pedido-card{
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 14px 50px rgba(0,0,0,.30);
+}
+
+/* Badges del estatus */
+.badge-app{
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .35rem .7rem;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: .75rem;
+  border: 1px solid rgba(255,255,255,.14);
+}
+
+.badge-app-primary{
+  background: rgba(59,130,246,.18);
+  color: #eaf2ff;
+  border-color: rgba(59,130,246,.28);
+}
+
+.badge-app-success{
+  background: rgba(34,197,94,.16);
+  color: #eafff1;
+  border-color: rgba(34,197,94,.26);
+}
+
+.badge-app-muted{
+  background: rgba(255,255,255,.10);
+  color: rgba(229,231,235,.92);
 }

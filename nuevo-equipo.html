@@ -8,66 +8,72 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="bg-body-tertiary">
+
+<body class="app-space">
 
   <div class="d-flex">
     <!-- Sidebar -->
-    <aside class="sidebar bg-white border-end">
-      <div class="p-3 border-bottom">
-        <div class="fw-bold">FERJER</div>
-        <small class="text-secondary">Sistema de seguimiento</small>
+    <aside class="sidebar sidebar-app">
+      <div class="p-3 border-app border-bottom">
+        <div class="d-flex align-items-center gap-2">
+          <span class="brand-dot"></span>
+          <div class="fw-bold text-white">FERJER</div>
+        </div>
+        <small class="text-app-muted">Sistema de seguimiento</small>
       </div>
+
       <nav class="p-2">
-        <a class="nav-link rounded-3 px-3 py-2" href="dashboard.html">Dashboard</a>
-        <a class="nav-link rounded-3 px-3 py-2" href="equipos.html">Equipos</a>
-        <a class="nav-link active rounded-3 px-3 py-2" href="nuevo-equipo.html">Nuevo registro</a>
+        <a class="nav-link" href="dashboard.html">Dashboard</a>
+        <a class="nav-link" href="equipos.html">Equipos</a>
+        <a class="nav-link active" href="nuevo-equipo.html">Nuevo registro</a>
       </nav>
-      <div class="p-3 mt-auto border-top">
-        <button id="btnLogout" class="btn btn-outline-secondary w-100">Cerrar sesión</button>
+
+      <div class="p-3 mt-auto border-app border-top">
+        <button id="btnLogout" class="btn btn-app-outline w-100">Cerrar sesión</button>
       </div>
     </aside>
 
     <!-- Content -->
     <main class="flex-grow-1">
-      <header class="bg-white border-bottom">
+      <header class="topbar-app">
         <div class="container-fluid py-3">
-          <h1 class="h5 mb-0 fw-semibold">Nuevo registro</h1>
-          <small class="text-secondary">Captura de equipo (folio automático)</small>
+          <h1 class="h5 mb-0 fw-semibold text-white">Nuevo registro</h1>
+          <small class="text-app-muted">Captura de equipo (folio automático)</small>
         </div>
       </header>
 
       <section class="container-fluid py-4">
-        <div class="card shadow-sm border-0 rounded-4">
+        <div class="card card-app rounded-4">
           <div class="card-body p-4">
             <form id="equipoForm" novalidate>
 
               <div class="row g-3">
+
                 <div class="col-md-3">
-                  <label class="form-label">Folio</label>
-                  <input type="text" class="form-control" id="folio" readonly>
+                  <label class="form-label text-app-muted">Folio</label>
+                  <input type="text" class="form-control input-app" id="folio" readonly>
                 </div>
 
                 <div class="col-md-3">
-                  <label class="form-label">Estatus</label>
-                  <input type="text" class="form-control" id="estatus" value="Recibido" readonly>
+                  <label class="form-label text-app-muted">Estatus</label>
+                  <input type="text" class="form-control input-app" id="estatus" value="Recibido" readonly>
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label">Cliente</label>
-                  <input type="text" class="form-control" id="cliente" placeholder="Nombre del cliente" required>
+                  <label class="form-label text-app-muted">Cliente</label>
+                  <input type="text" class="form-control input-app" id="cliente" placeholder="Nombre del cliente" required>
                   <div class="invalid-feedback">Ingresa el cliente.</div>
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label">Correo del cliente</label>
-                  <input type="email" class="form-control" id="clienteEmail" placeholder="cliente@correo.com" required>
+                  <label class="form-label text-app-muted">Correo del cliente</label>
+                  <input type="email" class="form-control input-app" id="clienteEmail" placeholder="cliente@correo.com" required>
                   <div class="invalid-feedback">Ingresa el correo del cliente.</div>
                 </div>
 
-
                 <div class="col-md-6">
-                  <label class="form-label">Tipo de equipo</label>
-                  <select class="form-select" id="tipo" required>
+                  <label class="form-label text-app-muted">Tipo de equipo</label>
+                  <select class="form-select input-app" id="tipo" required>
                     <option value="" selected disabled>Selecciona</option>
                     <option>Laptop</option>
                     <option>PC Escritorio</option>
@@ -79,21 +85,22 @@
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label">Marca / Modelo</label>
-                  <input type="text" class="form-control" id="modelo" placeholder="Ej. HP 14, Dell Vostro..." required>
+                  <label class="form-label text-app-muted">Marca / Modelo</label>
+                  <input type="text" class="form-control input-app" id="modelo" placeholder="Ej. HP 14, Dell Vostro..." required>
                   <div class="invalid-feedback">Ingresa marca/modelo.</div>
                 </div>
 
                 <div class="col-md-12">
-                  <label class="form-label">Falla reportada</label>
-                  <textarea class="form-control" id="falla" rows="3" placeholder="Describe el problema..." required></textarea>
+                  <label class="form-label text-app-muted">Falla reportada</label>
+                  <textarea class="form-control input-app" id="falla" rows="3" placeholder="Describe el problema..." required></textarea>
                   <div class="invalid-feedback">Describe la falla.</div>
                 </div>
+
               </div>
 
-              <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn btn-primary">Guardar</button>
-                <a href="equipos.html" class="btn btn-outline-secondary">Ver lista</a>
+              <div class="d-flex flex-wrap gap-2 mt-4">
+                <button type="submit" class="btn btn-app">Guardar</button>
+                <a href="equipos.html" class="btn btn-app-outline">Ver lista</a>
               </div>
 
               <div id="saveOk" class="alert alert-success mt-3 d-none" role="alert">

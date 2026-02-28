@@ -4,31 +4,38 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mis pedidos | FERJER</title>
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="bg-body-tertiary">
+
+<body class="app-space">
 
   <div class="d-flex">
-    <aside class="sidebar bg-white border-end">
-      <div class="p-3 border-bottom">
-        <div class="fw-bold">FERJER</div>
-        <small class="text-secondary">Sistema de seguimiento</small>
+    <aside class="sidebar sidebar-app">
+      <div class="p-3 border-app border-bottom">
+        <div class="d-flex align-items-center gap-2">
+          <span class="brand-dot"></span>
+          <div class="fw-bold text-white">FERJER</div>
+        </div>
+        <small class="text-app-muted">Sistema de seguimiento</small>
       </div>
+
       <nav class="p-2" id="sidebarNav"></nav>
-      <div class="p-3 mt-auto border-top">
-        <button id="btnLogout" class="btn btn-outline-secondary w-100">Cerrar sesión</button>
+
+      <div class="p-3 mt-auto border-app border-top">
+        <button id="btnLogout" class="btn btn-app-outline w-100">Cerrar sesión</button>
       </div>
     </aside>
 
     <main class="flex-grow-1">
-      <header class="bg-white border-bottom">
+      <header class="topbar-app">
         <div class="container-fluid py-3 d-flex align-items-center justify-content-between">
           <div>
-            <h1 class="h5 mb-0 fw-semibold">Mis pedidos</h1>
-            <small class="text-secondary">Historial de compras</small>
+            <h1 class="h5 mb-0 fw-semibold text-white">Mis pedidos</h1>
+            <small class="text-app-muted">Historial de compras</small>
           </div>
-          <span class="text-secondary small" id="topbarUsuario"></span>
+          <span class="text-app-muted small" id="topbarUsuario"></span>
         </div>
       </header>
 
@@ -39,9 +46,9 @@
           <div>Los pedidos <strong>no se envían a domicilio</strong>. Pasa a recoger tu pedido directamente en tienda.</div>
         </div>
 
-        <div class="card shadow-sm border-0 rounded-4">
+        <div class="card card-app rounded-4">
           <div class="card-body">
-            <div id="pedidosEmpty" class="text-center text-secondary py-4 d-none">
+            <div id="pedidosEmpty" class="text-center text-app-muted py-4 d-none">
               Aún no tienes pedidos realizados.
             </div>
             <div id="pedidosLista"></div>
@@ -54,13 +61,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/app.js"></script>
+
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
 
       function estatusBadge(estatus) {
-        if (estatus === "Pagado")    return "text-bg-primary";
-        if (estatus === "Entregado") return "text-bg-success";
-        return "text-bg-secondary";
+        if (estatus === "Pagado")    return "badge-app badge-app-primary";
+        if (estatus === "Entregado") return "badge-app badge-app-success";
+        return "badge-app badge-app-muted";
       }
 
       function estatusTexto(estatus) {
@@ -69,15 +77,22 @@
         return estatus;
       }
 
+      // ===== TICKET MEJORADO (mismo estilo que el de tienda) =====
       function abrirTicket(pedido, items) {
-        const lineas = items.map(i => `
+        const lineas = (items || []).map(i => `
           <tr>
             <td>${i.nombre}</td>
-            <td style="text-align:center">${i.cantidad}</td>
-            <td style="text-align:right">$${Number(i.precio_unit).toFixed(2)}</td>
-            <td style="text-align:right">$${Number(i.subtotal).toFixed(2)}</td>
+            <td class="c">${i.cantidad}</td>
+            <td class="r">$${Number(i.precio_unit).toFixed(2)}</td>
+            <td class="r">$${Number(i.subtotal).toFixed(2)}</td>
           </tr>
         `).join("");
+
+        // Opcional: cambia estos textos por los reales
+        const direccion = "Av. _________ #___, Col. _________, Monterrey, N.L.";
+        const horario   = "Lun a Sáb: 10:00 a 19:00";
+        const metodoPago = (pedido?.metodo_pago || "Tarjeta");
+        const codigo = `FERJER-${pedido?.id_pedido}-${new Date().getFullYear()}`;
 
         const ventana = window.open("", "_blank");
         ventana.document.write(`
@@ -85,59 +100,215 @@
           <html lang="es">
           <head>
             <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
             <title>Ticket #${pedido.id_pedido}</title>
             <style>
-              body { font-family: Arial, sans-serif; max-width: 400px; margin: 30px auto; color: #333; }
-              h1 { font-size: 22px; margin-bottom: 0; }
-              .sub { color: #777; font-size: 13px; margin-bottom: 16px; }
-              .divider { border-top: 1px dashed #ccc; margin: 12px 0; }
-              table { width: 100%; border-collapse: collapse; font-size: 13px; }
-              th { text-align: left; border-bottom: 1px solid #ccc; padding: 4px 0; }
-              td { padding: 4px 0; }
-              .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 10px; }
-              .footer { font-size: 12px; color: #888; text-align: center; margin-top: 20px; }
-              @media print { button { display: none; } }
+              :root{
+                --ink:#0f172a;
+                --muted:#64748b;
+                --line:#e5e7eb;
+                --soft:#f8fafc;
+                --brand:#0d6efd;
+              }
+              *{ box-sizing:border-box; }
+              body{
+                font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+                background:#ffffff;
+                color:var(--ink);
+                margin:0;
+                padding:24px 14px;
+              }
+              .wrap{ max-width:420px; margin:0 auto; }
+              .ticket{
+                border:1px solid var(--line);
+                border-radius:16px;
+                overflow:hidden;
+                box-shadow:0 12px 35px rgba(0,0,0,.08);
+              }
+              .header{
+                padding:14px 16px;
+                background: linear-gradient(135deg, rgba(13,110,253,.10), rgba(13,110,253,.04));
+                border-bottom:1px solid var(--line);
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                gap:12px;
+              }
+              .brand{
+                display:flex; align-items:center; gap:10px;
+                font-weight:900; letter-spacing:.3px; font-size:18px;
+              }
+              .dot{
+                width:10px;height:10px;border-radius:999px;background:var(--brand);
+                box-shadow:0 0 0 4px rgba(13,110,253,.14);
+              }
+              .sub{ font-size:12px; color:var(--muted); margin-top:2px; font-weight:600; }
+              .pill{
+                font-size:12px; font-weight:900;
+                padding:6px 10px; border-radius:999px;
+                border:1px solid rgba(13,110,253,.25);
+                background:rgba(13,110,253,.08);
+                color:#0b3ea8;
+                white-space:nowrap;
+              }
+              .body{ padding:14px 16px; }
+              .block{
+                background:var(--soft);
+                border:1px solid var(--line);
+                border-radius:12px;
+                padding:10px 12px;
+                margin-bottom:12px;
+              }
+              .row{
+                display:flex; justify-content:space-between; gap:10px;
+                font-size:12.5px; line-height:1.35; margin:2px 0;
+              }
+              .k{ color:var(--muted); font-weight:800; }
+              .v{ font-weight:900; }
+              table{
+                width:100%;
+                border-collapse:separate;
+                border-spacing:0;
+                border:1px solid var(--line);
+                border-radius:12px;
+                overflow:hidden;
+                font-size:12.5px;
+              }
+              thead th{
+                background:#0f172a;
+                color:#fff;
+                text-align:left;
+                padding:10px 10px;
+                font-weight:900;
+                letter-spacing:.2px;
+              }
+              tbody td{
+                padding:9px 10px;
+                border-top:1px solid var(--line);
+                background:#fff;
+              }
+              tbody tr:nth-child(even) td{ background:#fbfdff; }
+              td.c{ text-align:center; }
+              td.r{ text-align:right; font-variant-numeric: tabular-nums; }
+
+              .totalBox{
+                margin-top:12px;
+                border:1px solid rgba(13,110,253,.25);
+                background:rgba(13,110,253,.08);
+                border-radius:12px;
+                padding:10px 12px;
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                font-weight:900;
+              }
+              .totalBox span:last-child{
+                font-size:16px;
+                color:#0b3ea8;
+                font-variant-numeric: tabular-nums;
+              }
+              .notice{
+                margin-top:12px;
+                border:1px dashed rgba(15,23,42,.35);
+                background:rgba(15,23,42,.04);
+                border-radius:12px;
+                padding:10px 12px;
+                font-size:12.5px;
+                font-weight:800;
+                text-align:center;
+              }
+              .meta{
+                margin-top:10px;
+                text-align:center;
+                color:var(--muted);
+                font-size:12px;
+                font-weight:700;
+              }
+              .btnPrint{
+                margin-top:12px;
+                width:100%;
+                padding:12px;
+                border:none;
+                border-radius:12px;
+                background:var(--brand);
+                color:#fff;
+                font-weight:900;
+                cursor:pointer;
+                font-size:14px;
+              }
+              @media print{
+                body{ padding:0; }
+                .wrap{ max-width:100%; }
+                .ticket{ box-shadow:none; border:0; border-radius:0; }
+                .btnPrint{ display:none; }
+              }
             </style>
           </head>
           <body>
-            <h1>FERJER</h1>
-            <div class="sub">Sistema de seguimiento de equipos</div>
-            <div class="divider"></div>
-            <div style="font-size:13px;">
-              <strong>Pedido #${pedido.id_pedido}</strong><br>
-              Fecha: ${pedido.fecha_pedido ?? "-"}<br>
-              Cliente: ${pedido.cliente}<br>
-              Correo: ${pedido.email}
+            <div class="wrap">
+              <div class="ticket">
+                <div class="header">
+                  <div>
+                    <div class="brand"><span class="dot"></span> FERJER</div>
+                    <div class="sub">Sistema de seguimiento de equipos</div>
+                  </div>
+                  <div class="pill">Pedido #${pedido.id_pedido}</div>
+                </div>
+
+                <div class="body">
+
+                  <div class="block">
+                    <div class="row"><span class="k">Fecha</span><span class="v">${pedido.fecha_pedido ?? "-"}</span></div>
+                    <div class="row"><span class="k">Cliente</span><span class="v">${pedido.cliente ?? "-"}</span></div>
+                    <div class="row"><span class="k">Correo</span><span class="v">${pedido.email ?? "-"}</span></div>
+                    <div class="row"><span class="k">Método de pago</span><span class="v">${metodoPago}</span></div>
+                    <div class="row"><span class="k">Código</span><span class="v">${codigo}</span></div>
+                  </div>
+
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th class="c">Cant.</th>
+                        <th class="r">Precio</th>
+                        <th class="r">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>${lineas}</tbody>
+                  </table>
+
+                  <div class="totalBox">
+                    <span>Total</span>
+                    <span>$${Number(pedido.total).toFixed(2)} MXN</span>
+                  </div>
+
+                  ${pedido.notas ? `<div class="block" style="margin-top:12px">
+                    <div class="row" style="justify-content:flex-start;gap:8px">
+                      <span class="k">Notas:</span>
+                      <span class="v" style="font-weight:700;color:#0f172a">${String(pedido.notas).replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span>
+                    </div>
+                  </div>` : ""}
+
+                  <div class="notice">
+                    🏪 <strong>Solo entrega en tienda.</strong><br>
+                    Preséntate con este ticket para recoger tu pedido.
+                  </div>
+
+                  <div class="meta">
+                    <div><strong>Dirección:</strong> ${direccion}</div>
+                    <div><strong>Horario:</strong> ${horario}</div>
+                  </div>
+
+                  <button class="btnPrint" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+                </div>
+              </div>
             </div>
-            <div class="divider"></div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th style="text-align:center">Cant.</th>
-                  <th style="text-align:right">Precio</th>
-                  <th style="text-align:right">Subtotal</th>
-                </tr>
-              </thead>
-              <tbody>${lineas}</tbody>
-            </table>
-            <div class="divider"></div>
-            <div class="total">Total: $${Number(pedido.total).toFixed(2)} MXN</div>
-            <div class="divider"></div>
-            <div class="footer">
-              🏪 Tu pedido solo se entrega en tienda.<br>
-              Preséntate con este ticket para recogerlo.<br><br>
-              ¡Gracias por tu compra!
-            </div>
-            <br>
-            <button onclick="window.print()" style="width:100%;padding:10px;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">
-              🖨️ Imprimir / Guardar PDF
-            </button>
           </body>
           </html>
         `);
         ventana.document.close();
       }
+      // ===== /TICKET MEJORADO =====
 
       try {
         const data    = await apiFetch(BASE_API + "pedidos/mis_pedidos.php");
@@ -149,25 +320,27 @@
         }
 
         document.getElementById("pedidosLista").innerHTML = pedidos.map(p => `
-          <div class="border rounded-4 p-3 mb-3">
+          <div class="pedido-card p-3 mb-3">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-              <span class="fw-semibold">Pedido #${p.id_pedido}
-                <span class="text-secondary fw-normal small ms-1">${p.fecha_pedido ?? ""}</span>
+              <span class="fw-semibold text-white">
+                Pedido #${p.id_pedido}
+                <span class="text-app-muted fw-normal small ms-1">${p.fecha_pedido ?? ""}</span>
               </span>
-              <span class="badge ${estatusBadge(p.estatus)}">${estatusTexto(p.estatus)}</span>
+              <span class="${estatusBadge(p.estatus)}">${estatusTexto(p.estatus)}</span>
             </div>
-            <div class="text-secondary small mb-2">${p.productos ?? "-"}</div>
-            ${p.notas ? `<div class="text-secondary small mb-2"><em>${p.notas}</em></div>` : ""}
+
+            <div class="text-app-muted small mb-2">${p.productos ?? "-"}</div>
+            ${p.notas ? `<div class="text-app-muted small mb-2"><em>${p.notas}</em></div>` : ""}
+
             <div class="d-flex justify-content-between align-items-center mt-2">
-              <span class="fw-bold">$${Number(p.total).toFixed(2)} MXN</span>
-              <button class="btn btn-sm btn-outline-secondary btn-ver-ticket" data-id="${p.id_pedido}">
+              <span class="fw-bold text-white">$${Number(p.total).toFixed(2)} MXN</span>
+              <button class="btn btn-sm btn-app-outline btn-ver-ticket" data-id="${p.id_pedido}">
                 🖨️ Ver ticket
               </button>
             </div>
           </div>
         `).join("");
 
-        // Evento para ver ticket
         document.getElementById("pedidosLista").addEventListener("click", async (e) => {
           const btn = e.target.closest(".btn-ver-ticket");
           if (!btn) return;
@@ -193,5 +366,6 @@
       }
     });
   </script>
+
 </body>
 </html>

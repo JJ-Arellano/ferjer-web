@@ -4,66 +4,67 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tienda | FERJER</title>
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
-  <style>
-    .product-card { transition: transform .15s, box-shadow .15s; cursor: pointer; }
-    .product-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.1) !important; }
-    .cart-badge { position: fixed; bottom: 24px; right: 24px; z-index: 1000; }
-    .cart-count { position: absolute; top: -6px; right: -6px; background: #dc3545;
-                  color: #fff; border-radius: 50%; width: 20px; height: 20px;
-                  font-size: 11px; display: flex; align-items: center; justify-content: center; }
-    .card-input { letter-spacing: 2px; }
-  </style>
 </head>
-<body class="bg-body-tertiary">
+
+<body class="app-space">
 
   <div class="d-flex">
-    <aside class="sidebar bg-white border-end">
-      <div class="p-3 border-bottom">
-        <div class="fw-bold">FERJER</div>
-        <small class="text-secondary">Sistema de seguimiento</small>
+    <aside class="sidebar sidebar-app">
+      <div class="p-3 border-app border-bottom">
+        <div class="d-flex align-items-center gap-2">
+          <span class="brand-dot"></span>
+          <div class="fw-bold text-white">FERJER</div>
+        </div>
+        <small class="text-app-muted">Sistema de seguimiento</small>
       </div>
+
       <nav class="p-2" id="sidebarNav"></nav>
-      <div class="p-3 mt-auto border-top">
-        <button id="btnLogout" class="btn btn-outline-secondary w-100">Cerrar sesión</button>
+
+      <div class="p-3 mt-auto border-app border-top">
+        <button id="btnLogout" class="btn btn-app-outline w-100">Cerrar sesión</button>
       </div>
     </aside>
 
     <main class="flex-grow-1">
-      <header class="bg-white border-bottom">
+      <header class="topbar-app">
         <div class="container-fluid py-3 d-flex align-items-center justify-content-between">
           <div>
-            <h1 class="h5 mb-0 fw-semibold">Tienda</h1>
-            <small class="text-secondary">Productos disponibles</small>
+            <h1 class="h5 mb-0 fw-semibold text-white">Tienda</h1>
+            <small class="text-app-muted">Productos disponibles</small>
           </div>
           <div class="d-flex align-items-center gap-2">
-            <span class="text-secondary small" id="topbarUsuario"></span>
+            <span class="text-app-muted small" id="topbarUsuario"></span>
           </div>
         </div>
       </header>
 
       <section class="container-fluid py-4">
-        <!-- Leyenda recogida en tienda -->
+
+        <!-- Leyenda -->
         <div class="alert alert-warning d-flex align-items-center gap-2 mb-4" role="alert">
           <span style="font-size:1.2rem;">🏪</span>
           <div>
-            <strong>Solo recolección en tienda.</strong> Los pedidos <strong>no se envían a domicilio</strong>. Una vez confirmado tu pedido, pasa a recogerlo directamente en nuestra tienda.
+            <strong>Solo recolección en tienda.</strong> Los pedidos <strong>no se envían a domicilio</strong>.
+            Una vez confirmado tu pedido, pasa a recogerlo directamente en nuestra tienda.
           </div>
         </div>
 
         <div class="alert alert-danger d-none" id="shopErr"></div>
 
         <div class="row g-3" id="productsGrid">
-          <div class="col-12 text-center text-secondary py-5">Cargando productos...</div>
+          <div class="col-12 text-center text-app-muted py-5">Cargando productos...</div>
         </div>
+
       </section>
     </main>
   </div>
 
   <!-- Botón flotante del carrito -->
   <div class="cart-badge">
-    <button class="btn btn-primary btn-lg rounded-circle shadow position-relative"
+    <button class="btn btn-app btn-lg rounded-circle shadow position-relative"
             id="btnCarrito" style="width:56px;height:56px;font-size:20px;">
       🛒
       <span class="cart-count d-none" id="cartCount">0</span>
@@ -71,11 +72,12 @@
   </div>
 
   <!-- Offcanvas: Carrito -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasCarrito" style="width:400px;">
-    <div class="offcanvas-header border-bottom">
-      <h5 class="offcanvas-title fw-semibold">Tu carrito</h5>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  <div class="offcanvas offcanvas-end offcanvas-app" tabindex="-1" id="offcanvasCarrito" style="width:400px;">
+    <div class="offcanvas-header border-app border-bottom">
+      <h5 class="offcanvas-title fw-semibold text-white">Tu carrito</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
     </div>
+
     <div class="offcanvas-body d-flex flex-column p-0">
 
       <!-- Paso 1: Productos -->
@@ -84,59 +86,64 @@
         <div class="flex-grow-1" id="cartItems"></div>
 
         <div id="cartFooter" style="display:none!important">
-          <div class="border-top pt-3 mt-2">
-            <div class="d-flex justify-content-between fw-semibold mb-3">
+          <div class="border-app border-top pt-3 mt-2">
+            <div class="d-flex justify-content-between fw-semibold mb-3 text-white">
               <span>Total</span>
               <span id="cartTotal">$0.00</span>
             </div>
+
             <div class="mb-3">
-              <label class="form-label small text-secondary">Notas (opcional)</label>
-              <textarea class="form-control" id="cartNotas" rows="2" placeholder="Ej: Pago con tarjeta, llevar factura..."></textarea>
+              <label class="form-label small text-app-muted">Notas (opcional)</label>
+              <textarea class="form-control input-app" id="cartNotas" rows="2"
+                        placeholder="Ej: Pago con tarjeta, llevar factura..."></textarea>
             </div>
-            <button class="btn btn-primary w-100" id="btnIrAPago">Continuar al pago →</button>
+
+            <button class="btn btn-app w-100" id="btnIrAPago">Continuar al pago →</button>
           </div>
         </div>
       </div>
 
-      <!-- Paso 2: Pago con tarjeta -->
+      <!-- Paso 2: Pago -->
       <div id="pasoPago" class="d-flex flex-column flex-grow-1 p-3 d-none">
-        <button class="btn btn-link text-secondary p-0 mb-3 text-start" id="btnVolverCarrito">← Volver al carrito</button>
+        <button class="btn btn-link text-app-muted p-0 mb-3 text-start" id="btnVolverCarrito">← Volver al carrito</button>
 
-        <h6 class="fw-semibold mb-1">Datos de pago</h6>
-        <small class="text-secondary mb-3 d-block">Ingresa los datos de tu tarjeta para confirmar el pedido.</small>
+        <h6 class="fw-semibold mb-1 text-white">Datos de pago</h6>
+        <small class="text-app-muted mb-3 d-block">Ingresa los datos de tu tarjeta para confirmar el pedido.</small>
 
-        <!-- Leyenda en el paso de pago también -->
         <div class="alert alert-warning small py-2 mb-3">
           🏪 Recuerda que tu pedido <strong>solo se entrega en tienda</strong>.
         </div>
 
         <div class="mb-3">
-          <label class="form-label small">Número de tarjeta</label>
-          <input type="text" class="form-control card-input" id="cardNumero"
+          <label class="form-label small text-app-muted">Número de tarjeta</label>
+          <input type="text" class="form-control input-app card-input" id="cardNumero"
                  placeholder="0000 0000 0000 0000" maxlength="19">
         </div>
+
         <div class="mb-3">
-          <label class="form-label small">Nombre en la tarjeta</label>
-          <input type="text" class="form-control" id="cardNombre" placeholder="Ej. JUAN PEREZ">
+          <label class="form-label small text-app-muted">Nombre en la tarjeta</label>
+          <input type="text" class="form-control input-app" id="cardNombre" placeholder="Ej. JUAN PEREZ">
         </div>
+
         <div class="row g-2 mb-3">
           <div class="col-6">
-            <label class="form-label small">Vencimiento</label>
-            <input type="text" class="form-control card-input" id="cardVencimiento"
+            <label class="form-label small text-app-muted">Vencimiento</label>
+            <input type="text" class="form-control input-app card-input" id="cardVencimiento"
                    placeholder="MM/AA" maxlength="5">
           </div>
           <div class="col-6">
-            <label class="form-label small">CVV</label>
-            <input type="text" class="form-control card-input" id="cardCvv"
+            <label class="form-label small text-app-muted">CVV</label>
+            <input type="text" class="form-control input-app card-input" id="cardCvv"
                    placeholder="123" maxlength="4">
           </div>
         </div>
 
-        <div class="border-top pt-3 mt-auto">
-          <div class="d-flex justify-content-between fw-semibold mb-3">
+        <div class="border-app border-top pt-3 mt-auto">
+          <div class="d-flex justify-content-between fw-semibold mb-3 text-white">
             <span>Total a pagar</span>
             <span id="pagoTotal">$0.00</span>
           </div>
+
           <button class="btn btn-success w-100" id="btnConfirmarPedido">✓ Confirmar pedido</button>
           <div class="alert d-none mt-2" id="cartMsg"></div>
         </div>
@@ -147,12 +154,13 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/app.js"></script>
+
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
 
       if (!isCliente(getSession()?.role)) {
         document.getElementById("btnCarrito")?.classList.add("d-none");
-}
+      }
 
       const productsGrid = document.getElementById("productsGrid");
       const cartItems    = document.getElementById("cartItems");
@@ -168,25 +176,21 @@
 
       let carritoActual = { id_pedido: null, total: 0, carrito: [] };
 
-      // ===== Formatear número de tarjeta =====
       document.getElementById("cardNumero").addEventListener("input", (e) => {
         let val = e.target.value.replace(/\D/g, "").substring(0, 16);
         e.target.value = val.replace(/(.{4})/g, "$1 ").trim();
       });
 
-      // ===== Formatear vencimiento =====
       document.getElementById("cardVencimiento").addEventListener("input", (e) => {
         let val = e.target.value.replace(/\D/g, "").substring(0, 4);
         if (val.length >= 2) val = val.substring(0, 2) + "/" + val.substring(2);
         e.target.value = val;
       });
 
-      // ===== Solo números en CVV =====
       document.getElementById("cardCvv").addEventListener("input", (e) => {
         e.target.value = e.target.value.replace(/\D/g, "").substring(0, 4);
       });
 
-      // ===== Ir al paso de pago =====
       document.getElementById("btnIrAPago").addEventListener("click", () => {
         document.getElementById("pagoTotal").textContent = "$" + Number(carritoActual.total).toFixed(2);
         pasoProductos.classList.add("d-none");
@@ -194,20 +198,18 @@
         cartMsg.classList.add("d-none");
       });
 
-      // ===== Volver al carrito =====
       document.getElementById("btnVolverCarrito").addEventListener("click", () => {
         pasoPago.classList.add("d-none");
         pasoProductos.classList.remove("d-none");
       });
 
-      // ===== Cargar productos =====
       async function cargarProductos() {
         try {
           const data     = await apiFetch(BASE_API + "productos/list.php");
           const products = data.data || [];
 
           if (products.length === 0) {
-            productsGrid.innerHTML = `<div class="col-12 text-center text-secondary py-5">No hay productos disponibles.</div>`;
+            productsGrid.innerHTML = `<div class="col-12 text-center text-app-muted py-5">No hay productos disponibles.</div>`;
             return;
           }
 
@@ -216,20 +218,22 @@
             const sinStock = p.stock <= 0;
             return `
               <div class="col-sm-6 col-lg-3">
-                <div class="card product-card h-100 shadow-sm border-0 rounded-4 overflow-hidden ${sinStock ? "opacity-50" : ""}">
-                  <div class="bg-light" style="height:180px;display:flex;align-items:center;justify-content:center;">
+                <div class="card product-card card-product-app h-100 rounded-4 overflow-hidden ${sinStock ? "opacity-50" : ""}">
+                  <div class="product-media">
                     ${img
-                      ? `<img src="${img}" alt="${p.nombre}" style="max-height:100%;max-width:100%;object-fit:contain;">`
-                      : `<div class="text-secondary small">Sin imagen</div>`}
+                      ? `<img src="${img}" alt="${p.nombre}" class="product-img">`
+                      : `<div class="text-app-muted small">Sin imagen</div>`}
                   </div>
+
                   <div class="card-body d-flex flex-column">
-                    <h6 class="fw-semibold mb-1">${p.nombre}</h6>
-                    <div class="text-secondary small mb-2">Stock: ${p.stock}</div>
+                    <h6 class="fw-semibold mb-1 text-white">${p.nombre}</h6>
+                    <div class="text-app-muted small mb-2">Stock: ${p.stock}</div>
+
                     <div class="d-flex align-items-center justify-content-between mt-auto">
-                      <div class="fw-bold">$${Number(p.precio).toFixed(2)}</div>
+                      <div class="fw-bold text-white">$${Number(p.precio).toFixed(2)}</div>
                       ${sinStock
                         ? `<span class="badge text-bg-secondary">Sin stock</span>`
-                        : (isCliente(getSession()?.role) ? `<button class="btn btn-sm btn-primary btn-agregar"
+                        : (isCliente(getSession()?.role) ? `<button class="btn btn-sm btn-app btn-agregar"
                             data-id="${p.id_producto}">+ Agregar</button>` : '')}
                     </div>
                   </div>
@@ -243,7 +247,6 @@
         }
       }
 
-      // ===== Cargar carrito =====
       async function cargarCarrito() {
         try {
           const data = await apiFetch(BASE_API + "carrito/get_carrito.php");
@@ -254,7 +257,6 @@
         }
       }
 
-      // ===== Render carrito =====
       function renderCarrito() {
         const items = carritoActual.carrito || [];
         const total = carritoActual.total || 0;
@@ -274,26 +276,28 @@
         cartTotal.textContent = "$" + Number(total).toFixed(2);
 
         cartItems.innerHTML = items.map(item => `
-          <div class="d-flex align-items-center gap-2 py-2 border-bottom">
+          <div class="d-flex align-items-center gap-2 py-2 border-app border-bottom cart-row">
             <div class="flex-grow-1">
-              <div class="fw-semibold small">${item.nombre}</div>
-              <div class="text-secondary small">$${Number(item.precio_unit).toFixed(2)} c/u</div>
+              <div class="fw-semibold small text-white">${item.nombre}</div>
+              <div class="text-app-muted small">$${Number(item.precio_unit).toFixed(2)} c/u</div>
             </div>
+
             <div class="d-flex align-items-center gap-1">
-              <button class="btn btn-sm btn-outline-secondary btn-qty"
+              <button class="btn btn-sm btn-app-outline btn-qty"
                       data-id="${item.id_item}" data-qty="${item.cantidad - 1}">−</button>
-              <span class="px-2">${item.cantidad}</span>
-              <button class="btn btn-sm btn-outline-secondary btn-qty"
+              <span class="px-2 text-white">${item.cantidad}</span>
+              <button class="btn btn-sm btn-app-outline btn-qty"
                       data-id="${item.id_item}" data-qty="${item.cantidad + 1}">+</button>
             </div>
-            <div class="fw-semibold small">$${Number(item.subtotal).toFixed(2)}</div>
+
+            <div class="fw-semibold small text-white">$${Number(item.subtotal).toFixed(2)}</div>
+
             <button class="btn btn-sm btn-outline-danger btn-qty"
                     data-id="${item.id_item}" data-qty="0">✕</button>
           </div>
         `).join("");
       }
 
-      // ===== Agregar al carrito =====
       productsGrid.addEventListener("click", async (e) => {
         const btn = e.target.closest(".btn-agregar");
         if (!btn) return;
@@ -313,7 +317,6 @@
         }
       });
 
-      // ===== Cambiar cantidad / eliminar =====
       cartItems.addEventListener("click", async (e) => {
         const btn = e.target.closest(".btn-qty");
         if (!btn) return;
@@ -331,15 +334,13 @@
         }
       });
 
-      // ===== Confirmar pedido =====
       document.getElementById("btnConfirmarPedido").addEventListener("click", async () => {
         if (!carritoActual.id_pedido) return;
 
-        // Validar tarjeta
-        const numero     = document.getElementById("cardNumero").value.replace(/\s/g, "");
-        const nombre     = document.getElementById("cardNombre").value.trim();
+        const numero      = document.getElementById("cardNumero").value.replace(/\s/g, "");
+        const nombre      = document.getElementById("cardNombre").value.trim();
         const vencimiento = document.getElementById("cardVencimiento").value.trim();
-        const cvv        = document.getElementById("cardCvv").value.trim();
+        const cvv         = document.getElementById("cardCvv").value.trim();
 
         cartMsg.classList.add("d-none");
 
@@ -362,94 +363,252 @@
             body: JSON.stringify({ id_pedido: carritoActual.id_pedido, notas })
           });
 
-      const session = getSession();
-      const itemsTicket = carritoActual.carrito || [];
+          const session = getSession();
+          const itemsTicket = carritoActual.carrito || [];
 
-        cartMsg.className = "alert alert-success mt-2";
-        cartMsg.innerHTML = `
-          ✅ Pedido #${resp.id_pedido} confirmado. Total: $${Number(resp.total).toFixed(2)} MXN.<br>
-          <button class="btn btn-sm btn-outline-success mt-2" id="btnTicket">🖨️ Ver / Imprimir ticket</button>
-        `;
-        cartMsg.classList.remove("d-none");
+          cartMsg.className = "alert alert-success mt-2";
+          cartMsg.innerHTML = `
+            ✅ Pedido #${resp.id_pedido} confirmado. Total: $${Number(resp.total).toFixed(2)} MXN.<br>
+            <button class="btn btn-sm btn-outline-success mt-2" id="btnTicket">🖨️ Ver / Imprimir ticket</button>
+          `;
+          cartMsg.classList.remove("d-none");
 
-        document.getElementById("btnTicket").addEventListener("click", () => {
-          const fecha = new Date().toLocaleString("es-MX");
-          const lineas = itemsTicket.map(i => `
-            <tr>
-              <td>${i.nombre}</td>
-              <td style="text-align:center">${i.cantidad}</td>
-              <td style="text-align:right">$${Number(i.precio_unit).toFixed(2)}</td>
-              <td style="text-align:right">$${Number(i.subtotal).toFixed(2)}</td>
-            </tr>
-          `).join("");
+          // ====== TICKET MEJORADO (AQUÍ ESTÁ EL CAMBIO) ======
+          document.getElementById("btnTicket").addEventListener("click", () => {
+            const fecha = new Date().toLocaleString("es-MX");
 
-          const ventana = window.open("", "_blank");
-          ventana.document.write(`
-            <!doctype html>
-            <html lang="es">
-            <head>
-              <meta charset="utf-8">
-              <title>Ticket #${resp.id_pedido}</title>
-              <style>
-                body { font-family: Arial, sans-serif; max-width: 400px; margin: 30px auto; color: #333; }
-                h1 { font-size: 22px; margin-bottom: 0; }
-                .sub { color: #777; font-size: 13px; margin-bottom: 16px; }
-                .divider { border-top: 1px dashed #ccc; margin: 12px 0; }
-                table { width: 100%; border-collapse: collapse; font-size: 13px; }
-                th { text-align: left; border-bottom: 1px solid #ccc; padding: 4px 0; }
-                td { padding: 4px 0; }
-                .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 10px; }
-                .footer { font-size: 12px; color: #888; text-align: center; margin-top: 20px; }
-                @media print { button { display: none; } }
-              </style>
-            </head>
-            <body>
-              <h1>FERJER</h1>
-              <div class="sub">Sistema de seguimiento de equipos</div>
+            const lineas = itemsTicket.map(i => `
+              <tr>
+                <td>${i.nombre}</td>
+                <td class="c">${i.cantidad}</td>
+                <td class="r">$${Number(i.precio_unit).toFixed(2)}</td>
+                <td class="r">$${Number(i.subtotal).toFixed(2)}</td>
+              </tr>
+            `).join("");
 
-              <div class="divider"></div>
+            // Datos "oficiales" (puedes cambiar a los tuyos reales)
+            const direccion = "Av. _________ #___, Col. _________, Monterrey, N.L.";
+            const horario   = "Lun a Sáb: 10:00 a 19:00";
+            const metodoPago = "Tarjeta";
+            const codigo = `FERJER-${resp.id_pedido}-${new Date().getFullYear()}`;
 
-              <div style="font-size:13px;">
-                <strong>Pedido #${resp.id_pedido}</strong><br>
-                Fecha: ${fecha}<br>
-                Cliente: ${session?.name || "-"}<br>
-                Correo: ${session?.email || "-"}
-              </div>
+            const ventana = window.open("", "_blank");
+            ventana.document.write(`
+              <!doctype html>
+              <html lang="es">
+              <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width,initial-scale=1">
+                <title>Ticket #${resp.id_pedido}</title>
+                <style>
+                  :root{
+                    --ink:#0f172a;
+                    --muted:#64748b;
+                    --line:#e5e7eb;
+                    --soft:#f8fafc;
+                    --brand:#0d6efd;
+                  }
+                  *{ box-sizing:border-box; }
+                  body{
+                    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+                    background:#ffffff;
+                    color:var(--ink);
+                    margin:0;
+                    padding:24px 14px;
+                  }
+                  .wrap{ max-width:420px; margin:0 auto; }
+                  .ticket{
+                    border:1px solid var(--line);
+                    border-radius:16px;
+                    overflow:hidden;
+                    box-shadow:0 12px 35px rgba(0,0,0,.08);
+                  }
+                  .header{
+                    padding:14px 16px;
+                    background: linear-gradient(135deg, rgba(13,110,253,.10), rgba(13,110,253,.04));
+                    border-bottom:1px solid var(--line);
+                    display:flex;
+                    align-items:center;
+                    justify-content:space-between;
+                    gap:12px;
+                  }
+                  .brand{
+                    display:flex; align-items:center; gap:10px;
+                    font-weight:900; letter-spacing:.3px; font-size:18px;
+                  }
+                  .dot{
+                    width:10px;height:10px;border-radius:999px;background:var(--brand);
+                    box-shadow:0 0 0 4px rgba(13,110,253,.14);
+                  }
+                  .sub{ font-size:12px; color:var(--muted); margin-top:2px; font-weight:600; }
+                  .pill{
+                    font-size:12px; font-weight:900;
+                    padding:6px 10px; border-radius:999px;
+                    border:1px solid rgba(13,110,253,.25);
+                    background:rgba(13,110,253,.08);
+                    color:#0b3ea8;
+                    white-space:nowrap;
+                  }
+                  .body{ padding:14px 16px; }
+                  .block{
+                    background:var(--soft);
+                    border:1px solid var(--line);
+                    border-radius:12px;
+                    padding:10px 12px;
+                    margin-bottom:12px;
+                  }
+                  .row{
+                    display:flex; justify-content:space-between; gap:10px;
+                    font-size:12.5px; line-height:1.35; margin:2px 0;
+                  }
+                  .k{ color:var(--muted); font-weight:800; }
+                  .v{ font-weight:900; }
+                  table{
+                    width:100%;
+                    border-collapse:separate;
+                    border-spacing:0;
+                    border:1px solid var(--line);
+                    border-radius:12px;
+                    overflow:hidden;
+                    font-size:12.5px;
+                  }
+                  thead th{
+                    background:#0f172a;
+                    color:#fff;
+                    text-align:left;
+                    padding:10px 10px;
+                    font-weight:900;
+                    letter-spacing:.2px;
+                  }
+                  tbody td{
+                    padding:9px 10px;
+                    border-top:1px solid var(--line);
+                    background:#fff;
+                  }
+                  tbody tr:nth-child(even) td{ background:#fbfdff; }
+                  td.c{ text-align:center; }
+                  td.r{ text-align:right; font-variant-numeric: tabular-nums; }
 
-              <div class="divider"></div>
+                  .totalBox{
+                    margin-top:12px;
+                    border:1px solid rgba(13,110,253,.25);
+                    background:rgba(13,110,253,.08);
+                    border-radius:12px;
+                    padding:10px 12px;
+                    display:flex;
+                    align-items:center;
+                    justify-content:space-between;
+                    font-weight:900;
+                  }
+                  .totalBox span:last-child{
+                    font-size:16px;
+                    color:#0b3ea8;
+                    font-variant-numeric: tabular-nums;
+                  }
+                  .notice{
+                    margin-top:12px;
+                    border:1px dashed rgba(15,23,42,.35);
+                    background:rgba(15,23,42,.04);
+                    border-radius:12px;
+                    padding:10px 12px;
+                    font-size:12.5px;
+                    font-weight:800;
+                    text-align:center;
+                  }
+                  .meta{
+                    margin-top:10px;
+                    text-align:center;
+                    color:var(--muted);
+                    font-size:12px;
+                    font-weight:700;
+                  }
+                  .btnPrint{
+                    margin-top:12px;
+                    width:100%;
+                    padding:12px;
+                    border:none;
+                    border-radius:12px;
+                    background:var(--brand);
+                    color:#fff;
+                    font-weight:900;
+                    cursor:pointer;
+                    font-size:14px;
+                  }
+                  @media print{
+                    body{ padding:0; }
+                    .wrap{ max-width:100%; }
+                    .ticket{ box-shadow:none; border:0; border-radius:0; }
+                    .btnPrint{ display:none; }
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="wrap">
+                  <div class="ticket">
+                    <div class="header">
+                      <div>
+                        <div class="brand"><span class="dot"></span> FERJER</div>
+                        <div class="sub">Sistema de seguimiento de equipos</div>
+                      </div>
+                      <div class="pill">Pedido #${resp.id_pedido}</div>
+                    </div>
 
-              <table>
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th style="text-align:center">Cant.</th>
-                    <th style="text-align:right">Precio</th>
-                    <th style="text-align:right">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody>${lineas}</tbody>
-              </table>
+                    <div class="body">
 
-              <div class="divider"></div>
-              <div class="total">Total: $${Number(resp.total).toFixed(2)} MXN</div>
+                      <div class="block">
+                        <div class="row"><span class="k">Fecha</span><span class="v">${fecha}</span></div>
+                        <div class="row"><span class="k">Cliente</span><span class="v">${session?.name || "-"}</span></div>
+                        <div class="row"><span class="k">Correo</span><span class="v">${session?.email || "-"}</span></div>
+                        <div class="row"><span class="k">Método de pago</span><span class="v">${metodoPago}</span></div>
+                        <div class="row"><span class="k">Código</span><span class="v">${codigo}</span></div>
+                      </div>
 
-              <div class="divider"></div>
-              <div class="footer">
-                🏪 Tu pedido solo se entrega en tienda.<br>
-                Preséntate con este ticket para recogerlo.<br><br>
-                ¡Gracias por tu compra!
-              </div>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Producto</th>
+                            <th class="c">Cant.</th>
+                            <th class="r">Precio</th>
+                            <th class="r">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>${lineas}</tbody>
+                      </table>
 
-              <br>
-              <button onclick="window.print()" style="width:100%;padding:10px;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">
-                🖨️ Imprimir / Guardar PDF
-              </button>
-            </body>
-            </html>
-          `);
-        ventana.document.close();
-      });
-          // Limpiar formulario tarjeta
+                      <div class="totalBox">
+                        <span>Total</span>
+                        <span>$${Number(resp.total).toFixed(2)} MXN</span>
+                      </div>
+
+                      ${notas ? `<div class="block" style="margin-top:12px">
+                        <div class="row" style="justify-content:flex-start;gap:8px">
+                          <span class="k">Notas:</span>
+                          <span class="v" style="font-weight:700;color:#0f172a">${String(notas).replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span>
+                        </div>
+                      </div>` : ""}
+
+                      <div class="notice">
+                        🏪 <strong>Solo entrega en tienda.</strong><br>
+                        Preséntate con este ticket para recoger tu pedido.
+                      </div>
+
+                      <div class="meta">
+                        <div><strong>Dirección:</strong> ${direccion}</div>
+                        <div><strong>Horario:</strong> ${horario}</div>
+                      </div>
+
+                      <button class="btnPrint" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+                    </div>
+                  </div>
+                </div>
+              </body>
+              </html>
+            `);
+
+            ventana.document.close();
+          });
+          // ====== /TICKET MEJORADO ======
+
           document.getElementById("cardNumero").value = "";
           document.getElementById("cardNombre").value = "";
           document.getElementById("cardVencimiento").value = "";
@@ -459,7 +618,6 @@
           renderCarrito();
           await cargarProductos();
 
-          // Volver a paso productos después de 3 segundos
         } catch (err) {
           cartMsg.className   = "alert alert-danger mt-2";
           cartMsg.textContent = err.message || "No se pudo confirmar el pedido";
@@ -470,7 +628,6 @@
         }
       });
 
-      // Botón flotante abre carrito
       document.getElementById("btnCarrito").addEventListener("click", () => offcanvas.show());
 
       await cargarProductos();
