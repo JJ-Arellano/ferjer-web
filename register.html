@@ -22,7 +22,7 @@
             <div class="col-md-6 col-lg-7 d-flex align-items-center">
               <div class="card-body p-4 p-lg-5 text-app">
 
-                <form id="registerForm">
+                <form id="registerForm" novalidate>
 
                   <div class="d-flex align-items-center gap-2 mb-2 pb-1">
                     <span class="brand-dot" aria-hidden="true"></span>
@@ -36,59 +36,34 @@
                   <!-- Nombre -->
                   <div class="mb-3">
                     <label class="form-label text-app-muted">Nombre completo</label>
-                    <input type="text"
-                           id="regName"
-                           class="form-control form-control-lg input-app"
-                           placeholder="Tu nombre"
-                           required>
+                    <input type="text" id="regName" class="form-control form-control-lg input-app" placeholder="Tu nombre">
                   </div>
 
                   <!-- Correo -->
                   <div class="mb-3">
                     <label class="form-label text-app-muted">Correo electrónico</label>
-                    <input type="email"
-                           id="regEmail"
-                           class="form-control form-control-lg input-app"
-                           placeholder="correo@ejemplo.com"
-                           required>
+                    <input type="text" id="regEmail" class="form-control form-control-lg input-app" placeholder="correo@ejemplo.com">
                   </div>
 
                   <!-- Contraseña -->
                   <div class="mb-3">
                     <label class="form-label text-app-muted">Contraseña</label>
-                    <input type="password"
-                           id="regPass"
-                           class="form-control form-control-lg input-app"
-                           placeholder="Mínimo 6 caracteres"
-                           minlength="6"
-                           required>
+                    <input type="password" id="regPass" class="form-control form-control-lg input-app" placeholder="Mínimo 6 caracteres">
                   </div>
 
                   <!-- Confirmar -->
                   <div class="mb-3">
                     <label class="form-label text-app-muted">Confirmar contraseña</label>
-                    <input type="password"
-                           id="regPass2"
-                           class="form-control form-control-lg input-app"
-                           placeholder="Repite tu contraseña"
-                           minlength="6"
-                           required>
+                    <input type="password" id="regPass2" class="form-control form-control-lg input-app" placeholder="Repite tu contraseña">
                   </div>
 
                   <!-- Mensajes -->
-                  <div id="regMsgOk" class="alert alert-success d-none">
-                    Usuario registrado correctamente.
-                  </div>
-
-                  <div id="regMsgErr" class="alert alert-danger d-none">
-                    El correo ya está registrado.
-                  </div>
+                  <div id="regMsgOk" class="alert alert-success d-none"></div>
+                  <div id="regMsgErr" class="alert alert-danger d-none"></div>
 
                   <!-- Botón -->
                   <div class="d-grid mb-3">
-                    <button type="submit" class="btn btn-app btn-lg">
-                      Registrarse
-                    </button>
+                    <button type="submit" id="btnRegistrarse" class="btn btn-app btn-lg">Registrarse</button>
                   </div>
 
                   <p class="mb-0 text-app-muted">

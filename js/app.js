@@ -241,9 +241,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Logout
-  document.getElementById("btnLogout")?.addEventListener("click", () => {
-    clearSession();
-    window.location.href = "login.html";
+  document.getElementById("btnLogout")?.addEventListener("click", async () => {
+    try {
+      await apiFetch(BASE_API + "auth/logout.php", { method: "POST" });
+    } catch (_) {
+      // Si falla el endpoint igual cerramos sesión en el cliente
+    } finally {
+      clearSession();
+      window.location.href = "login.html";
+    }
   });
 
   // ===== LOGIN =====
@@ -287,66 +293,62 @@ document.addEventListener("DOMContentLoaded", () => {
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const nombre = (document.getElementById("regName")?.value || "").trim();
-      const email = (document.getElementById("regEmail")?.value || "").trim().toLowerCase();
-      const password = (document.getElementById("regPass")?.value || "").trim();
+      const nombre    = (document.getElementById("regName")?.value || "").trim();
+      const email     = (document.getElementById("regEmail")?.value || "").trim().toLowerCase();
+      const password  = (document.getElementById("regPass")?.value || "").trim();
       const password2 = (document.getElementById("regPass2")?.value || "").trim();
+      const btnSubmit = document.getElementById("btnRegistrarse");
 
-      let rol = "cliente"; // Por defecto, el registro es para clientes
-
-      const okMsg = document.getElementById("regMsgOk");
+      const okMsg  = document.getElementById("regMsgOk");
       const errMsg = document.getElementById("regMsgErr");
+
+      // Función helper para mostrar error
+      function mostrarError(texto) {
+        okMsg?.classList.add("d-none");
+        if (errMsg) { errMsg.textContent = texto; errMsg.classList.remove("d-none"); }
+      }
+
       okMsg?.classList.add("d-none");
       errMsg?.classList.add("d-none");
 
-      if (!nombre || !email || !password) {
-        errMsg?.classList.remove("d-none");
-        if (errMsg) errMsg.textContent = "Faltan datos.";
-        return;
-      }
-      if (!email.includes("@")) {
-        errMsg?.classList.remove("d-none");
-        if (errMsg) errMsg.textContent = "Email inválido.";
-        return;
-      }
-      if (password.length < 6) {
-        errMsg?.classList.remove("d-none");
-        if (errMsg) errMsg.textContent = "La contraseña debe tener al menos 6 caracteres.";
-        return;
-      }
-      if (password !== password2) {
-        errMsg?.classList.remove("d-none");
-        if (errMsg) errMsg.textContent = "Las contraseñas no coinciden.";
-        return;
-      }
+      // Validaciones del frontend
+      if (!nombre)              return mostrarError("El nombre es requerido.");
+      if (!email)               return mostrarError("El correo es requerido.");
+      if (!email.includes("@")) return mostrarError("El correo no es válido.");
+      if (password.length < 6)  return mostrarError("La contraseña debe tener al menos 6 caracteres.");
+      if (password !== password2) return mostrarError("Las contraseñas no coinciden.");
+
+      // Deshabilitar botón mientras procesa
+      if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = "Registrando..."; }
 
       try {
         await apiFetch(BASE_API + "auth/register.php", {
           method: "POST",
-          body: JSON.stringify({ nombre, email, password, rol })
+          body: JSON.stringify({ nombre, email, password })
         });
 
-    okMsg?.classList.remove("d-none");
-    if (okMsg) okMsg.textContent = "Usuario creado ✅";
-    registerForm.reset();
-    setTimeout(async () => {
-      try {
-        const login = await apiFetch(BASE_API + "auth/login.php", {
-          method: "POST",
-          body: JSON.stringify({ email, password })
-        });
-        setSession({ name: login.user.nombre, email: login.user.email, role: login.user.rol, id: login.user.id_usuario });
-        if (login.token) localStorage.setItem("token", login.token);
-        window.location.href = "cliente-mis-equipos.html";
-      } catch {
-        window.location.href = "login.html";
-      }
-    }, 1000);
+        if (okMsg) { okMsg.textContent = "¡Cuenta creada! Entrando..."; okMsg.classList.remove("d-none"); }
+        registerForm.reset();
+
+        setTimeout(async () => {
+          try {
+            const login = await apiFetch(BASE_API + "auth/login.php", {
+              method: "POST",
+              body: JSON.stringify({ email, password })
+            });
+            setSession({ name: login.user.nombre, email: login.user.email, role: login.user.rol, id: login.user.id_usuario });
+            if (login.token) localStorage.setItem("token", login.token);
+            window.location.href = "cliente-mis-equipos.html";
+          } catch {
+            window.location.href = "login.html";
+          }
+        }, 1000);
 
       } catch (err) {
-        console.error("❌ Error register:", err);
-        errMsg?.classList.remove("d-none");
-        if (errMsg) errMsg.textContent = err.message || "No se pudo crear el usuario.";
+        // El mensaje viene directo del backend (json_err)
+        mostrarError(err.message || "No se pudo crear la cuenta. Intenta de nuevo.");
+      } finally {
+        if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = "Registrarse"; }
       }
     });
   }
@@ -1092,103 +1094,6 @@ if (smGuardar) {
     });
 
     cargarUsuarios();
-  }
-
-  // ===== ENTREGAS PENDIENTES =====
-  const entregasBody = document.getElementById("entregasBody");
-  if (entregasBody) {
-    let pedidoSeleccionado = null;
-    const modalEntrega = new bootstrap.Modal(document.getElementById("modalEntrega"));
-
-    async function cargarEntregas() {
-      entregasBody.innerHTML = `<tr><td colspan="7" class="text-center text-app-muted py-4">Cargando...</td></tr>`;
-      document.getElementById("emptyEntregas")?.classList.add("d-none");
-
-      try {
-        const data = await apiFetch(BASE_API + "pedidos/entregas.php");
-        const pedidos = data.data || [];
-
-        // KPIs
-        document.getElementById("kpiPendientes").textContent = pedidos.length;
-
-        // Entregados hoy: hay que pedirlos aparte si el backend los filtra,
-        // por ahora dejamos el contador en 0 ya que el endpoint solo trae Pagado/Listo
-        // Si en el futuro el backend los incluye, se puede filtrar aquí
-
-        if (!pedidos.length) {
-          entregasBody.innerHTML = "";
-          document.getElementById("emptyEntregas")?.classList.remove("d-none");
-          return;
-        }
-
-        entregasBody.innerHTML = pedidos.map(p => `
-          <tr>
-            <td class="fw-semibold">#${p.id_pedido}</td>
-            <td>
-              <div>${p.cliente}</div>
-              <div class="text-app-muted small">${p.email}</div>
-            </td>
-            <td class="text-app-muted small">${p.productos || "-"}</td>
-            <td>$${Number(p.total || 0).toFixed(2)}</td>
-            <td class="text-app-muted small">${p.fecha_pedido || "-"}</td>
-            <td><span class="badge ${p.estatus === "Listo" ? "text-bg-success" : "text-bg-warning"}">${p.estatus}</span></td>
-            <td class="text-end">
-              <button class="btn btn-sm btn-success btn-entregar"
-                data-id="${p.id_pedido}"
-                data-cliente="${p.cliente}"
-                data-productos="${p.productos || '-'}">
-                ✓ Entregar
-              </button>
-            </td>
-          </tr>
-        `).join("");
-
-      } catch (err) {
-        console.error("❌ Error cargando entregas:", err);
-        entregasBody.innerHTML = `<tr><td colspan="7" class="text-danger text-center py-3">Error: ${err.message}</td></tr>`;
-      }
-    }
-
-    // Abrir modal al hacer clic en "Entregar"
-    entregasBody.addEventListener("click", (e) => {
-      const btn = e.target.closest(".btn-entregar");
-      if (!btn) return;
-      pedidoSeleccionado = btn.dataset.id;
-      document.getElementById("meCliente").textContent   = btn.dataset.cliente;
-      document.getElementById("mePedido").textContent    = "#" + btn.dataset.id;
-      document.getElementById("meProductos").textContent = btn.dataset.productos;
-      document.getElementById("meMsg").classList.add("d-none");
-      modalEntrega.show();
-    });
-
-    // Confirmar entrega
-    document.getElementById("btnConfirmarEntrega")?.addEventListener("click", async () => {
-      const btn = document.getElementById("btnConfirmarEntrega");
-      const msg = document.getElementById("meMsg");
-      btn.disabled = true;
-      btn.textContent = "Guardando...";
-      try {
-        await apiFetch(BASE_API + "pedidos/entregas.php", {
-          method: "POST",
-          body: JSON.stringify({ id_pedido: pedidoSeleccionado })
-        });
-        // Sumar entregados hoy
-        const kpiHoy = document.getElementById("kpiEntregadosHoy");
-        if (kpiHoy) kpiHoy.textContent = (parseInt(kpiHoy.textContent) || 0) + 1;
-        modalEntrega.hide();
-        cargarEntregas();
-      } catch (err) {
-        msg.className = "alert alert-danger";
-        msg.textContent = err.message || "No se pudo confirmar la entrega.";
-        msg.classList.remove("d-none");
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "✓ Confirmar entrega";
-      }
-    });
-
-    document.getElementById("btnRefresh")?.addEventListener("click", cargarEntregas);
-    cargarEntregas();
   }
 
   // ===== DASHBOARD =====
