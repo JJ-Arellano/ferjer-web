@@ -72,7 +72,7 @@ try {
       ->execute([(int)$u["id_usuario"], $hash]);
 
   // Limpiar tokens expirados de este usuario (evita que la tabla crezca)
-  $pdo->prepare("DELETE FROM api_tokens WHERE user_id = ? AND expires_at < NOW()")
+  $pdo->prepare("DELETE FROM api_tokens WHERE user_id = ? AND (expires_at < NOW() OR revoked_at IS NOT NULL)")
       ->execute([(int)$u["id_usuario"]]);
 
   json_ok([
