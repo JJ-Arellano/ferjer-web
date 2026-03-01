@@ -1094,6 +1094,103 @@ if (smGuardar) {
     cargarUsuarios();
   }
 
+  // ===== ENTREGAS PENDIENTES =====
+  const entregasBody = document.getElementById("entregasBody");
+  if (entregasBody) {
+    let pedidoSeleccionado = null;
+    const modalEntrega = new bootstrap.Modal(document.getElementById("modalEntrega"));
+
+    async function cargarEntregas() {
+      entregasBody.innerHTML = `<tr><td colspan="7" class="text-center text-app-muted py-4">Cargando...</td></tr>`;
+      document.getElementById("emptyEntregas")?.classList.add("d-none");
+
+      try {
+        const data = await apiFetch(BASE_API + "pedidos/entregas.php");
+        const pedidos = data.data || [];
+
+        // KPIs
+        document.getElementById("kpiPendientes").textContent = pedidos.length;
+
+        // Entregados hoy: hay que pedirlos aparte si el backend los filtra,
+        // por ahora dejamos el contador en 0 ya que el endpoint solo trae Pagado/Listo
+        // Si en el futuro el backend los incluye, se puede filtrar aquí
+
+        if (!pedidos.length) {
+          entregasBody.innerHTML = "";
+          document.getElementById("emptyEntregas")?.classList.remove("d-none");
+          return;
+        }
+
+        entregasBody.innerHTML = pedidos.map(p => `
+          <tr>
+            <td class="fw-semibold">#${p.id_pedido}</td>
+            <td>
+              <div>${p.cliente}</div>
+              <div class="text-app-muted small">${p.email}</div>
+            </td>
+            <td class="text-app-muted small">${p.productos || "-"}</td>
+            <td>$${Number(p.total || 0).toFixed(2)}</td>
+            <td class="text-app-muted small">${p.fecha_pedido || "-"}</td>
+            <td><span class="badge ${p.estatus === "Listo" ? "text-bg-success" : "text-bg-warning"}">${p.estatus}</span></td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-success btn-entregar"
+                data-id="${p.id_pedido}"
+                data-cliente="${p.cliente}"
+                data-productos="${p.productos || '-'}">
+                ✓ Entregar
+              </button>
+            </td>
+          </tr>
+        `).join("");
+
+      } catch (err) {
+        console.error("❌ Error cargando entregas:", err);
+        entregasBody.innerHTML = `<tr><td colspan="7" class="text-danger text-center py-3">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    // Abrir modal al hacer clic en "Entregar"
+    entregasBody.addEventListener("click", (e) => {
+      const btn = e.target.closest(".btn-entregar");
+      if (!btn) return;
+      pedidoSeleccionado = btn.dataset.id;
+      document.getElementById("meCliente").textContent   = btn.dataset.cliente;
+      document.getElementById("mePedido").textContent    = "#" + btn.dataset.id;
+      document.getElementById("meProductos").textContent = btn.dataset.productos;
+      document.getElementById("meMsg").classList.add("d-none");
+      modalEntrega.show();
+    });
+
+    // Confirmar entrega
+    document.getElementById("btnConfirmarEntrega")?.addEventListener("click", async () => {
+      const btn = document.getElementById("btnConfirmarEntrega");
+      const msg = document.getElementById("meMsg");
+      btn.disabled = true;
+      btn.textContent = "Guardando...";
+      try {
+        await apiFetch(BASE_API + "pedidos/entregas.php", {
+          method: "POST",
+          body: JSON.stringify({ id_pedido: pedidoSeleccionado })
+        });
+        // Sumar entregados hoy
+        const kpiHoy = document.getElementById("kpiEntregadosHoy");
+        if (kpiHoy) kpiHoy.textContent = (parseInt(kpiHoy.textContent) || 0) + 1;
+        modalEntrega.hide();
+        cargarEntregas();
+      } catch (err) {
+        msg.className = "alert alert-danger";
+        msg.textContent = err.message || "No se pudo confirmar la entrega.";
+        msg.classList.remove("d-none");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "✓ Confirmar entrega";
+      }
+    });
+
+    document.getElementById("btnRefresh")?.addEventListener("click", cargarEntregas);
+    cargarEntregas();
+  }
+
   // ===== DASHBOARD =====
   const kpiTotal = document.getElementById("kpiTotal");
   if (kpiTotal) {
@@ -1141,9 +1238,4 @@ if (smGuardar) {
       }
     })();
   }
-
-  
-
-
-
 });
