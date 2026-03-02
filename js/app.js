@@ -264,6 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const nombre    = (document.getElementById("regName")?.value || "").trim();
       const email     = (document.getElementById("regEmail")?.value || "").trim().toLowerCase();
+      const telefono  = (document.getElementById("regPhone")?.value || "").trim();
       const password  = (document.getElementById("regPass")?.value || "").trim();
       const password2 = (document.getElementById("regPass2")?.value || "").trim();
       const btnSubmit = document.getElementById("btnRegistrarse");
@@ -290,7 +291,7 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         await apiFetch(BASE_API + "auth/register.php", {
           method: "POST",
-          body: JSON.stringify({ nombre, email, password })
+          body: JSON.stringify({ nombre, email, telefono, password })
         });
 
         if (okMsg) { okMsg.textContent = "¡Cuenta creada! Entrando..."; okMsg.classList.remove("d-none"); }
