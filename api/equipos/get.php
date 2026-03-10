@@ -16,6 +16,7 @@ try {
       e.folio,
       c.nombre AS cliente,
       c.email AS correo,
+      e.telefono, 
       e.tipo_equipo,
       e.modelo,
       e.falla,

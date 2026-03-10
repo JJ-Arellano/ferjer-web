@@ -330,12 +330,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const cliente      = document.getElementById("cliente");
       const clienteEmail = document.getElementById("clienteEmail");
+      const clienteTel   = document.getElementById("clienteTel"); 
       const tipo         = document.getElementById("tipo");
       const modelo       = document.getElementById("modelo");
       const falla        = document.getElementById("falla");
 
       let ok = true;
-      [cliente, clienteEmail, tipo, modelo, falla].forEach(el => {
+      [cliente, clienteEmail, clienteTel, tipo, modelo, falla].forEach(el => {
         if (!el || !String(el.value || "").trim()) { el?.classList.add("is-invalid"); ok = false; }
         else el.classList.remove("is-invalid");
       });
@@ -348,6 +349,7 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({
             cliente:      cliente.value.trim(),
             clienteEmail: clienteEmail.value.trim().toLowerCase(),
+            clienteTel:   clienteTel.value.trim(), 
             tipo:         tipo.value.trim(),
             modelo:       modelo.value.trim(),
             falla:        falla.value.trim()
@@ -672,6 +674,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("detEstatus").textContent = d.estatus;
         document.getElementById("detCliente").textContent = d.cliente;
         document.getElementById("detCorreo").textContent  = d.correo || "-";
+        document.getElementById("detTelefono").textContent = d.telefono || "-";
         document.getElementById("detEquipo").textContent  = `${d.tipo_equipo} - ${d.modelo}`;
         document.getElementById("detFecha").textContent   = d.fecha_ingreso;
         document.getElementById("detFalla").textContent   = d.falla;

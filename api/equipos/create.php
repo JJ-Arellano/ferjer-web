@@ -10,12 +10,13 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") json_err("Método no permitido", 405)
 $in = read_json_body();
 $clienteNombre = trim($in["cliente"] ?? "");
 $clienteEmail  = strtolower(trim($in["clienteEmail"] ?? ""));
+$clienteTel    = trim($in["clienteTel"]   ?? ""); 
 $tipo          = trim($in["tipo"] ?? "");
 $modelo        = trim($in["modelo"] ?? "");
 $falla         = trim($in["falla"] ?? "");
 
-if ($clienteNombre === "" || $clienteEmail === "" || $tipo === "" || $modelo === "" || $falla === "") {
-  json_err("Faltan campos");
+if ($clienteNombre === "" || $clienteEmail === "" || $clienteTel === "" || $tipo === "" || $modelo === "" || $falla === "") {
+  json_err("Todos los campos son obligatorios", 400);
 }
 
 try {
@@ -44,10 +45,10 @@ try {
 
   // 3) insertar equipo (folio NULL por ahora)
   $insEq = $pdo->prepare("
-    INSERT INTO equipos (folio, id_cliente, tipo_equipo, modelo, falla, id_estado)
-    VALUES (NULL, ?, ?, ?, ?, ?)
+    INSERT INTO equipos (folio, id_cliente, tipo_equipo, modelo, falla, id_estado, telefono)
+    VALUES (NULL, ?, ?, ?, ?, ?, ?)
   ");
-  $insEq->execute([$id_cliente, $tipo, $modelo, $falla, $id_estado]);
+  $insEq->execute([$id_cliente, $tipo, $modelo, $falla, $id_estado, $clienteTel]);
   $id_equipo = (int)$pdo->lastInsertId();
 
   // 4) folio = id_equipo (simple, único)
