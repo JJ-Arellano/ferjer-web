@@ -54,6 +54,30 @@ try {
     VALUES (?, ?, ?, NOW())
   ")->execute([$id_equipo, $id_estado, $comentario]);
 
+  // Notificación cambio de estatus
+  $pdo->prepare("INSERT INTO notificaciones (tipo, mensaje) VALUES (?, ?)")
+    ->execute([
+      "cambio_estatus",
+      "Folio {$folio} cambió a estatus: {$estatus}"
+    ]);
+
+  // Si se entregó, notificación especial
+
+  if ($estatus === "Entregado") {
+
+      $pdo->prepare("INSERT INTO notificaciones (tipo, mensaje) VALUES (?, ?)")
+        ->execute([
+          "entregado",
+          "✅ Folio {$folio} fue entregado al cliente"
+        ]);
+
+      // 🔹 Generar garantía automáticamente
+      $pdo->prepare("
+          INSERT IGNORE INTO garantias (id_equipo, fecha_entrega, fecha_vencimiento)
+          VALUES (?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 60 DAY))
+      ")->execute([$id_equipo]);
+  }
+
   $pdo->commit();
   json_ok();
 } catch (Exception $e) {

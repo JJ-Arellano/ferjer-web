@@ -61,6 +61,13 @@ try {
     VALUES (?,?,?)
   ")->execute([$id_equipo, $id_estado, "Equipo registrado"]);
 
+  // Notificación nueva máquina
+  $pdo->prepare("INSERT INTO notificaciones (tipo, mensaje) VALUES (?, ?)")
+    ->execute([
+      "nuevo_equipo",
+      "Nueva máquina registrada - Folio {$id_equipo} ({$tipo} {$modelo})"
+    ]);
+
   $pdo->commit();
   json_ok(["folio" => $id_equipo, "id_equipo" => $id_equipo]);
 } catch (Exception $e) {

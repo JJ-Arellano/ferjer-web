@@ -13,6 +13,7 @@ if ($folio <= 0) json_err("Folio inválido");
 try {
   $st = $pdo->prepare("
     SELECT
+      e.id_equipo,
       e.folio,
       c.nombre AS cliente,
       c.email AS correo,

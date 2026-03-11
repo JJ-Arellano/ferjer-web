@@ -305,9 +305,8 @@ body {
 
 /* Sidebar oscura */
 .sidebar-app{
-  background: rgba(7,10,20,.72);
+  background: rgba(7,10,20,.92);
   border-right: 1px solid var(--border);
-  backdrop-filter: blur(10px);
 }
 
 /* Links generados por JS */
@@ -332,9 +331,8 @@ body {
 
 /* Topbar */
 .topbar-app{
-  background: rgba(7,10,20,.55);
+  background: rgba(7,10,20,.80);
   border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(10px);
 }
 
 /* KPI cards */
@@ -363,8 +361,7 @@ body {
   border-radius: 16px;
   overflow: hidden;               /* CLAVE para el radius */
   border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.04);
-  backdrop-filter: blur(8px);
+  background: rgba(255,255,255,.06);
 }
 
 /* Tabla base */
@@ -483,6 +480,11 @@ textarea.input-app{
 
 select.input-app option{
   color: #111827;
+}
+
+.table-shell {
+  position: relative;
+  z-index: 1;
 }
 
 /* =========================

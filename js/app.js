@@ -153,7 +153,6 @@ function protectRoutes() {
 // ===== Modal status =====
 function ensureStatusModal() {
   if (document.getElementById("statusModal")) return;
-
   document.body.insertAdjacentHTML("beforeend", `
 <div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
@@ -197,27 +196,217 @@ function clearModalMsg() {
   if (el) el.classList.add("d-none");
 }
 
+// ===== GARANTÍAS =====
+function formatFecha(fechaStr) {
+  if (!fechaStr) return "-";
+  const [y, m, d] = fechaStr.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+async function cargarGarantia(idEquipo) {
+  const section = document.getElementById("garantiaSection");
+  if (!section) return;
+  try {
+    const res = await apiFetch(BASE_API + "garantias/get.php?id_equipo=" + idEquipo);
+
+    if (!res) {
+      section.innerHTML = "";
+      return;
+    }
+
+    const data = res;
+    const esActiva = data.estado === "Activa";
+    const diasText = esActiva
+      ? (data.dias_restantes > 0 ? `${data.dias_restantes} días restantes` : "Vence hoy")
+      : "Garantía vencida";
+    section.innerHTML = `
+      <div class="card card-app rounded-4 mt-4">
+        <div class="card-body">
+          <h2 class="h6 fw-semibold mb-3 text-white">🛡️ Garantía</h2>
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <div class="text-app-muted small">Máquina</div>
+              <div class="fw-semibold text-white">${data.folio} — ${data.tipo_equipo} ${data.modelo}</div>
+            </div>
+            <div class="col-sm-6">
+              <div class="text-app-muted small">Cliente</div>
+              <div class="fw-semibold text-white">${data.cliente}</div>
+            </div>
+            <div class="col-sm-6">
+              <div class="text-app-muted small">Fecha de entrega</div>
+              <div class="fw-semibold text-white">${formatFecha(data.fecha_entrega)}</div>
+            </div>
+            <div class="col-sm-6">
+              <div class="text-app-muted small">Garantía</div>
+              <div class="fw-semibold text-white">60 días · vence ${formatFecha(data.fecha_vencimiento)}</div>
+            </div>
+            <div class="col-sm-6">
+              <div class="text-app-muted small">Estado garantía</div>
+              <span class="badge px-3 py-2 ${esActiva ? 'bg-success' : 'bg-danger'}" style="border-radius:999px; font-weight:800;">
+                ${esActiva ? '✅ Activa' : '❌ Vencida'}
+              </span>
+              <div class="text-app-muted small mt-1">${diasText}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    section.innerHTML = "";
+  }
+}
+
+async function generarGarantia(idEquipo) {
+  try {
+    await apiFetch(BASE_API + "garantias/create.php", {
+      method: "POST",
+      body: JSON.stringify({ id_equipo: idEquipo })
+    });
+  } catch (err) {
+    console.error("❌ Error generando garantía:", err);
+  }
+}
+
+// ===== NOTIFICACIONES =====
+let notifInterval = null;
+
+function iconoTipo(tipo) {
+  if (tipo === "nuevo_equipo")   return "🖥️";
+  if (tipo === "cambio_estatus") return "🔄";
+  if (tipo === "entregado")      return "✅";
+  if (tipo === "antiguedad")     return "";
+  return "🔔";
+}
+
+async function eliminarNotif(id) {
+  try {
+    await apiFetch(BASE_API + "notificaciones/notif_marcar.php", {
+      method: "POST",
+      body: JSON.stringify({ id_notificacion: id })
+    });
+    await cargarNotificaciones();
+  } catch (err) {
+    console.error("❌ Error eliminando notificación:", err);
+  }
+}
+
+async function eliminarSeleccionadas() {
+  const checks = document.querySelectorAll(".notif-check:checked");
+  if (!checks.length) return;
+  try {
+    for (const cb of checks) {
+      await apiFetch(BASE_API + "notificaciones/notif_marcar.php", {
+        method: "POST",
+        body: JSON.stringify({ id_notificacion: parseInt(cb.dataset.id) })
+      });
+    }
+    await cargarNotificaciones();
+  } catch (err) {
+    console.error("❌ Error eliminando seleccionadas:", err);
+  }
+}
+
+async function eliminarTodas() {
+  try {
+    await apiFetch(BASE_API + "notificaciones/notif_marcar.php", {
+      method: "POST",
+      body: JSON.stringify({ id_notificacion: 0 })
+    });
+    await cargarNotificaciones();
+  } catch (err) {
+    console.error("❌ Error eliminando todas:", err);
+  }
+}
+
+async function cargarNotificaciones() {
+  const campana    = document.getElementById("notifCampana");
+  const badge      = document.getElementById("notifBadge");
+  const lista      = document.getElementById("notifLista");
+  const btnElimSel = document.getElementById("btnEliminarSel");
+  if (!campana) return;
+
+  try {
+    await apiFetch(BASE_API + "notificaciones/notif_check.php").catch(() => {});
+    const data     = await apiFetch(BASE_API + "notificaciones/notif_list.php");
+    const notifs   = data.data || [];
+    const noLeidas = data.no_leidas || 0;
+
+    if (noLeidas > 0) {
+      badge.textContent = noLeidas > 9 ? "9+" : noLeidas;
+      badge.classList.remove("d-none");
+    } else {
+      badge.classList.add("d-none");
+    }
+
+    if (btnElimSel) btnElimSel.classList.toggle("d-none", notifs.length === 0);
+
+    if (!notifs.length) {
+      lista.innerHTML = `<li class="dropdown-item text-secondary small text-center py-3">Sin notificaciones 🎉</li>`;
+      return;
+    }
+
+    lista.innerHTML = notifs.map(n => `
+      <li class="border-bottom">
+        <div class="d-flex align-items-start gap-2 px-3 py-2" style="white-space:normal;">
+          <input type="checkbox" class="notif-check form-check-input mt-1 flex-shrink-0" data-id="${n.id_notificacion}">
+          <div class="flex-grow-1">
+            <div class="small ${n.leida == 0 ? 'fw-semibold' : 'text-secondary'}">${iconoTipo(n.tipo)} ${n.mensaje}</div>
+            <div class="text-secondary" style="font-size:.72rem">${n.fecha}</div>
+          </div>
+          <button class="btn btn-link btn-sm text-danger p-0 flex-shrink-0"
+                  style="font-size:.85rem; line-height:1;"
+                  onclick="eliminarNotif(${n.id_notificacion})">✕</button>
+        </div>
+      </li>
+    `).join("");
+
+  } catch (err) {
+    console.error("❌ Error cargando notificaciones:", err);
+  }
+}
+
+function initNotificaciones() {
+  const role = getSession()?.role || "";
+  if (!isStaff(role)) return;
+  const campana = document.getElementById("notifCampana");
+  if (!campana) return;
+  campana.classList.remove("d-none");
+  cargarNotificaciones();
+  notifInterval = setInterval(cargarNotificaciones, 30000);
+}
+
 // ================= DOMContentLoaded =================
 document.addEventListener("DOMContentLoaded", () => {
   console.log("📌 DOMContentLoaded");
-  
+
   protectRoutes();
   renderSidebarNav();
 
-  // Topbar usuario
   const topbar = document.getElementById("topbarUsuario");
   if (topbar) {
     const session = getSession();
     if (session) topbar.textContent = `${session.role}: ${session.name}`;
   }
 
+  initNotificaciones();
+
+  document.getElementById("btnMarcarTodas")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    eliminarTodas();
+  });
+
+  document.getElementById("btnEliminarSel")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    eliminarSeleccionadas();
+  });
+
   // Logout
   document.getElementById("btnLogout")?.addEventListener("click", async () => {
+    if (notifInterval) clearInterval(notifInterval);
     try {
       await apiFetch(BASE_API + "auth/logout.php", { method: "POST" });
-    } catch (_) {
-      // Si falla el endpoint igual cerramos sesión en el cliente
-    } finally {
+    } catch (_) {}
+    finally {
       clearSession();
       window.location.href = "login.html";
     }
@@ -228,27 +417,19 @@ document.addEventListener("DOMContentLoaded", () => {
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-
       const email    = (document.getElementById("email")?.value || "").trim().toLowerCase();
       const password = (document.getElementById("password")?.value || "").trim();
       const loginMsg = document.getElementById("loginMsg");
-
       loginMsg?.classList.remove("d-none");
       if (loginMsg) loginMsg.textContent = "Procesando...";
-
       try {
         const data = await apiFetch(BASE_API + "auth/login.php", {
           method: "POST",
           body: JSON.stringify({ email, password })
         });
-
         setSession({ name: data.user.nombre, email: data.user.email, role: data.user.rol, id: data.user.id_usuario });
         if (data.token) localStorage.setItem("token", data.token);
-
-        window.location.href = isClient(data.user.rol)
-          ? "cliente-mis-equipos.html"
-          : "dashboard.html";
-
+        window.location.href = isClient(data.user.rol) ? "cliente-mis-equipos.html" : "dashboard.html";
       } catch (err) {
         console.error("❌ Error login:", err);
         if (loginMsg) loginMsg.textContent = err.message || "Error al iniciar sesión";
@@ -261,22 +442,19 @@ document.addEventListener("DOMContentLoaded", () => {
   if (registerForm) {
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-
       const nombre    = (document.getElementById("regName")?.value || "").trim();
       const email     = (document.getElementById("regEmail")?.value || "").trim().toLowerCase();
       const telefono  = (document.getElementById("regPhone")?.value || "").trim();
       const password  = (document.getElementById("regPass")?.value || "").trim();
       const password2 = (document.getElementById("regPass2")?.value || "").trim();
       const btnSubmit = document.getElementById("btnRegistrarse");
-
-      const okMsg  = document.getElementById("regMsgOk");
-      const errMsg = document.getElementById("regMsgErr");
+      const okMsg     = document.getElementById("regMsgOk");
+      const errMsg    = document.getElementById("regMsgErr");
 
       function mostrarError(texto) {
         okMsg?.classList.add("d-none");
         if (errMsg) { errMsg.textContent = texto; errMsg.classList.remove("d-none"); }
       }
-
       okMsg?.classList.add("d-none");
       errMsg?.classList.add("d-none");
 
@@ -293,24 +471,16 @@ document.addEventListener("DOMContentLoaded", () => {
           method: "POST",
           body: JSON.stringify({ nombre, email, telefono, password })
         });
-
         if (okMsg) { okMsg.textContent = "¡Cuenta creada! Entrando..."; okMsg.classList.remove("d-none"); }
         registerForm.reset();
-
         setTimeout(async () => {
           try {
-            const login = await apiFetch(BASE_API + "auth/login.php", {
-              method: "POST",
-              body: JSON.stringify({ email, password })
-            });
+            const login = await apiFetch(BASE_API + "auth/login.php", { method: "POST", body: JSON.stringify({ email, password }) });
             setSession({ name: login.user.nombre, email: login.user.email, role: login.user.rol, id: login.user.id_usuario });
             if (login.token) localStorage.setItem("token", login.token);
             window.location.href = "cliente-mis-equipos.html";
-          } catch {
-            window.location.href = "login.html";
-          }
+          } catch { window.location.href = "login.html"; }
         }, 1000);
-
       } catch (err) {
         mostrarError(err.message || "No se pudo crear la cuenta. Intenta de nuevo.");
       } finally {
@@ -327,10 +497,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     equipoForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-
       const cliente      = document.getElementById("cliente");
       const clienteEmail = document.getElementById("clienteEmail");
-      const clienteTel   = document.getElementById("clienteTel"); 
+      const clienteTel   = document.getElementById("clienteTel");
       const tipo         = document.getElementById("tipo");
       const modelo       = document.getElementById("modelo");
       const falla        = document.getElementById("falla");
@@ -349,13 +518,12 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({
             cliente:      cliente.value.trim(),
             clienteEmail: clienteEmail.value.trim().toLowerCase(),
-            clienteTel:   clienteTel.value.trim(), 
+            clienteTel:   clienteTel.value.trim(),
             tipo:         tipo.value.trim(),
             modelo:       modelo.value.trim(),
             falla:        falla.value.trim()
           })
         });
-
         if (folioInput && data.folio) folioInput.value = data.folio;
         window.location.href = "equipos.html";
       } catch (err) {
@@ -374,9 +542,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const emptyState   = document.getElementById("emptyState");
     const allowed      = ["Recibido", "Diagnóstico", "Reparación", "Listo", "Entregado"];
 
-    let currentFolio  = null;
-    let currentActual = "";
-    let modal         = null;
+    let currentFolio    = null;
+    let currentIdEquipo = null;
+    let currentActual   = "";
+    let modal           = null;
 
     async function renderEquipos() {
       const q  = (searchInput?.value || "").trim();
@@ -388,8 +557,8 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const data    = await apiFetch(BASE_API + "equipos/list.php" + (params.toString() ? "?" + params.toString() : ""));
         const equipos = data.data || [];
-
         const isAdmin = isAdminRole(getSession()?.role);
+
         equiposBody.innerHTML = equipos.map(x => `
           <tr>
             <td class="fw-semibold">${x.folio}</td>
@@ -399,7 +568,10 @@ document.addEventListener("DOMContentLoaded", () => {
             <td><span class="badge ${badgeClass(x.estatus)}">${x.estatus}</span></td>
             <td class="text-end">
               <a class="btn btn-sm btn-outline-secondary me-2" href="detalle-equipo.html?folio=${encodeURIComponent(x.folio)}">Detalle</a>
-              <button class="btn btn-sm btn-outline-primary btn-cambiar-estatus" data-folio="${x.folio}" data-estatus="${x.estatus}">Cambiar</button>
+              <button class="btn btn-sm btn-outline-primary btn-cambiar-estatus"
+                data-folio="${x.folio}"
+                data-id="${x.id_equipo}"
+                data-estatus="${x.estatus}">Cambiar</button>
               ${isAdmin ? `<button class="btn btn-sm btn-outline-danger ms-2 btn-eliminar-equipo" data-folio="${x.folio}" data-cliente="${x.cliente}">Eliminar</button>` : ""}
             </td>
           </tr>
@@ -417,11 +589,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const modalEl = document.getElementById("statusModal");
     if (modalEl && window.bootstrap) modal = new bootstrap.Modal(modalEl);
 
-    const smFolio      = document.getElementById("smFolio");
+    const smFolio       = document.getElementById("smFolio");
     const smActualBadge = document.getElementById("smActualBadge");
-    const smNuevo      = document.getElementById("smNuevo");
-    const smComentario = document.getElementById("smComentario");
-    const smGuardar    = document.getElementById("smGuardar");
+    const smNuevo       = document.getElementById("smNuevo");
+    const smComentario  = document.getElementById("smComentario");
+    const smGuardar     = document.getElementById("smGuardar");
 
     if (smNuevo && smNuevo.options.length === 0) {
       smNuevo.innerHTML = allowed.map(s => `<option value="${s}">${s}</option>`).join("");
@@ -430,20 +602,14 @@ document.addEventListener("DOMContentLoaded", () => {
     equiposBody.addEventListener("click", (e) => {
       const btn = e.target.closest(".btn-cambiar-estatus");
       if (!btn) return;
-
-      currentFolio  = btn.getAttribute("data-folio");
-      currentActual = btn.getAttribute("data-estatus") || "";
-
+      currentFolio    = btn.getAttribute("data-folio");
+      currentIdEquipo = btn.getAttribute("data-id");
+      currentActual   = btn.getAttribute("data-estatus") || "";
       if (!currentFolio) { alert("Folio inválido"); return; }
-
       if (smFolio) smFolio.textContent = currentFolio;
-      if (smActualBadge) {
-        smActualBadge.className = `badge ${badgeClass(currentActual)}`;
-        smActualBadge.textContent = currentActual || "-";
-      }
-      if (smNuevo) smNuevo.value = currentActual;
+      if (smActualBadge) { smActualBadge.className = `badge ${badgeClass(currentActual)}`; smActualBadge.textContent = currentActual || "-"; }
+      if (smNuevo)      smNuevo.value      = currentActual;
       if (smComentario) smComentario.value = "";
-
       clearModalMsg();
       modal?.show();
     });
@@ -456,7 +622,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const smMsgEl = document.getElementById("smMsg");
         function showMsg(type, text) {
           if (!smMsgEl) return;
-          smMsgEl.className = `alert alert-${type}`;
+          smMsgEl.className   = `alert alert-${type}`;
           smMsgEl.textContent = text;
           smMsgEl.classList.remove("d-none");
         }
@@ -464,32 +630,38 @@ document.addEventListener("DOMContentLoaded", () => {
         const nuevo      = String(smNuevo?.value || "").trim();
         const comentario = String(smComentario?.value || "").trim() || "Cambio de estatus";
 
-        if (!allowed.includes(nuevo))  { showMsg("danger", "Estatus inválido.");                      smGuardar.dataset.busy = "0"; return; }
-        if (!currentFolio)             { showMsg("danger", "Folio inválido.");                         smGuardar.dataset.busy = "0"; return; }
-        if (nuevo === currentActual)   { showMsg("warning", "⚠️ Selecciona un estatus diferente.");   smGuardar.dataset.busy = "0"; return; }
+        if (!allowed.includes(nuevo))  { showMsg("danger",  "Estatus inválido.");                    smGuardar.dataset.busy = "0"; return; }
+        if (!currentFolio)             { showMsg("danger",  "Folio inválido.");                       smGuardar.dataset.busy = "0"; return; }
+        if (nuevo === currentActual)   { showMsg("warning", "⚠️ Selecciona un estatus diferente.");  smGuardar.dataset.busy = "0"; return; }
 
-        smGuardar.disabled     = true;
-        smGuardar.textContent  = "Guardando...";
+        smGuardar.disabled    = true;
+        smGuardar.textContent = "Guardando...";
 
         try {
           await apiFetch(EQUIPOS_STATUS_ENDPOINT, {
             method: "POST",
             body: JSON.stringify({ folio: parseInt(currentFolio, 10), estatus: nuevo, comentario })
           });
+
+          // Generar garantía automáticamente al marcar como Entregado
+          if (nuevo === "Entregado" && currentIdEquipo) {
+            await generarGarantia(currentIdEquipo);
+          }
+
           await renderEquipos();
           currentActual = nuevo;
           modal?.hide();
+          cargarNotificaciones();
         } catch (err) {
           showMsg("danger", err.message || "No se pudo actualizar");
         } finally {
-          smGuardar.disabled    = false;
-          smGuardar.textContent = "Guardar";
+          smGuardar.disabled     = false;
+          smGuardar.textContent  = "Guardar";
           smGuardar.dataset.busy = "0";
         }
       });
     }
 
-    // Abrir modal eliminar
     let folioAEliminar = null;
     const modalEliminarEquipo = new bootstrap.Modal(document.getElementById("modalEliminarEquipo"));
 
@@ -509,10 +681,7 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.disabled    = true;
       btn.textContent = "Eliminando...";
       try {
-        await apiFetch(BASE_API + "equipos/delete.php", {
-          method: "POST",
-          body: JSON.stringify({ folio: folioAEliminar })
-        });
+        await apiFetch(BASE_API + "equipos/delete.php", { method: "POST", body: JSON.stringify({ folio: folioAEliminar }) });
         modalEliminarEquipo.hide();
         renderEquipos();
       } catch (e) {
@@ -525,7 +694,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     renderEquipos();
-    searchInput?.addEventListener("input", renderEquipos);
+    searchInput?.addEventListener("input",  renderEquipos);
     statusFilter?.addEventListener("change", renderEquipos);
     btnClear?.addEventListener("click", () => {
       if (searchInput)  searchInput.value  = "";
@@ -543,41 +712,31 @@ document.addEventListener("DOMContentLoaded", () => {
     async function cargarEntregas() {
       entregasBody.innerHTML = `<tr><td colspan="7" class="text-center text-app-muted py-4">Cargando...</td></tr>`;
       document.getElementById("emptyEntregas")?.classList.add("d-none");
-
       try {
         const data    = await apiFetch(BASE_API + "pedidos/entregas.php");
         const pedidos = data.data || [];
-
-        document.getElementById("kpiPendientes").textContent    = pedidos.length;
-
+        document.getElementById("kpiPendientes").textContent = pedidos.length;
         if (!pedidos.length) {
           entregasBody.innerHTML = "";
           document.getElementById("emptyEntregas")?.classList.remove("d-none");
           return;
         }
-
         entregasBody.innerHTML = pedidos.map(p => `
           <tr>
             <td class="fw-semibold">#${p.id_pedido}</td>
-            <td>
-              <div>${p.cliente}</div>
-              <div class="text-app-muted small">${p.email}</div>
-            </td>
+            <td><div>${p.cliente}</div><div class="text-app-muted small">${p.email}</div></td>
             <td class="text-app-muted small">${p.productos || "-"}</td>
             <td>$${Number(p.total || 0).toFixed(2)}</td>
             <td class="text-app-muted small">${p.fecha_pedido || "-"}</td>
             <td><span class="badge ${p.estatus === "Listo" ? "text-bg-success" : "text-bg-warning"}">${p.estatus}</span></td>
             <td class="text-end">
               <button class="btn btn-sm btn-success btn-entregar"
-                data-id="${p.id_pedido}"
-                data-cliente="${p.cliente}"
-                data-productos="${p.productos || '-'}">
+                data-id="${p.id_pedido}" data-cliente="${p.cliente}" data-productos="${p.productos || '-'}">
                 ✓ Entregar
               </button>
             </td>
           </tr>
         `).join("");
-
       } catch (err) {
         console.error("❌ Error cargando entregas:", err);
         entregasBody.innerHTML = `<tr><td colspan="7" class="text-danger text-center py-3">Error: ${err.message}</td></tr>`;
@@ -598,13 +757,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("btnConfirmarEntrega")?.addEventListener("click", async () => {
       const btn = document.getElementById("btnConfirmarEntrega");
       const msg = document.getElementById("meMsg");
-      btn.disabled     = true;
-      btn.textContent  = "Guardando...";
+      btn.disabled    = true;
+      btn.textContent = "Guardando...";
       try {
-        await apiFetch(BASE_API + "pedidos/entregas.php", {
-          method: "POST",
-          body: JSON.stringify({ id_pedido: pedidoSeleccionado })
-        });
+        await apiFetch(BASE_API + "pedidos/entregas.php", { method: "POST", body: JSON.stringify({ id_pedido: pedidoSeleccionado }) });
         const kpiHoy = document.getElementById("kpiEntregadosHoy");
         if (kpiHoy) kpiHoy.textContent = (parseInt(kpiHoy.textContent) || 0) + 1;
         modalEntrega.hide();
@@ -628,10 +784,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (myEquiposBody) {
     (async () => {
       try {
-        const email = (getSession()?.email || "").toLowerCase();
-        const data  = await apiFetch(BASE_API + "equipos/mine.php?email=" + encodeURIComponent(email));
+        const email   = (getSession()?.email || "").toLowerCase();
+        const data    = await apiFetch(BASE_API + "equipos/mine.php?email=" + encodeURIComponent(email));
         const equipos = data.data || [];
-
         myEquiposBody.innerHTML = equipos.map(e => `
           <tr>
             <td class="fw-semibold">${e.folio ?? "-"}</td>
@@ -640,11 +795,9 @@ document.addEventListener("DOMContentLoaded", () => {
             <td class="text-secondary">${e.fecha_ingreso ?? "-"}</td>
           </tr>
         `).join("");
-
         const empty = document.getElementById("myEquiposEmpty");
         if (equipos.length === 0) empty?.classList.remove("d-none");
         else empty?.classList.add("d-none");
-
       } catch (err) {
         myEquiposBody.innerHTML = `<tr><td colspan="4" class="text-danger">Error: ${err.message}</td></tr>`;
       }
@@ -670,14 +823,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const det = await apiFetch(BASE_API + "equipos/get.php?folio=" + encodeURIComponent(folio));
         const d   = det.data;
 
-        document.getElementById("detFolio").textContent   = d.folio;
-        document.getElementById("detEstatus").textContent = d.estatus;
-        document.getElementById("detCliente").textContent = d.cliente;
-        document.getElementById("detCorreo").textContent  = d.correo || "-";
+        document.getElementById("detFolio").textContent    = d.folio;
+        document.getElementById("detEstatus").textContent  = d.estatus;
+        document.getElementById("detCliente").textContent  = d.cliente;
+        document.getElementById("detCorreo").textContent   = d.correo || "-";
         document.getElementById("detTelefono").textContent = d.telefono || "-";
-        document.getElementById("detEquipo").textContent  = `${d.tipo_equipo} - ${d.modelo}`;
-        document.getElementById("detFecha").textContent   = d.fecha_ingreso;
-        document.getElementById("detFalla").textContent   = d.falla;
+        document.getElementById("detEquipo").textContent   = `${d.tipo_equipo} - ${d.modelo}`;
+        document.getElementById("detFecha").textContent    = d.fecha_ingreso;
+        document.getElementById("detFalla").textContent    = d.falla;
+
+        // Cargar garantía si el equipo ya fue entregado
+        if (d.id_equipo) {
+          await cargarGarantia(d.id_equipo);
+        }
 
         const h    = await apiFetch(BASE_API + "historial/seguimiento.php?folio=" + encodeURIComponent(folio));
         const rows = h.data || [];
@@ -707,7 +865,6 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const data     = await apiFetch(BASE_API + "productos/list.php");
         const products = data.data || [];
-
         productsGrid.innerHTML = products.map(p => {
           const img = p.imagen_url || p.imagen || "";
           return `
@@ -728,7 +885,6 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
           `;
         }).join("");
-
       } catch (err) {
         productsGrid.innerHTML = `<div class="text-danger">Error: ${err.message}</div>`;
       }
@@ -742,13 +898,13 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("btnNuevoProducto")?.classList.add("d-none");
     }
 
-    let todosProductos   = [];
+    let todosProductos    = [];
     let productoAEliminar = null;
-    let modoEdicion      = false;
+    let modoEdicion       = false;
 
     async function cargarInventario() {
       try {
-        const data   = await apiFetch(BASE_API + "productos/list.php");
+        const data     = await apiFetch(BASE_API + "productos/list.php");
         todosProductos = data.data || [];
         renderInventario(todosProductos);
         actualizarContadoresInv(todosProductos);
@@ -765,11 +921,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderInventario(lista) {
       const empty = document.getElementById("inventarioEmpty");
-      if (!lista.length) {
-        inventarioBody.innerHTML = "";
-        empty?.classList.remove("d-none");
-        return;
-      }
+      if (!lista.length) { inventarioBody.innerHTML = ""; empty?.classList.remove("d-none"); return; }
       empty?.classList.add("d-none");
       inventarioBody.innerHTML = lista.map(p => `
         <tr>
@@ -842,7 +994,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("prodMsg").classList.add("d-none");
         new bootstrap.Modal(document.getElementById("modalProducto")).show();
       }
-
       const btnEliminar = e.target.closest(".btn-eliminar-prod");
       if (btnEliminar) {
         productoAEliminar = btnEliminar.dataset.id;
@@ -856,20 +1007,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const stock  = document.getElementById("prodStock").value;
       const err    = document.getElementById("prodErr");
       const msg    = document.getElementById("prodMsg");
-
       err.classList.add("d-none");
       msg.classList.add("d-none");
-
       if (!nombre || precio === "" || stock === "") {
         err.textContent = "Completa los campos obligatorios.";
         err.classList.remove("d-none");
         return;
       }
-
       const endpoint = modoEdicion ? BASE_API + "productos/update.php" : BASE_API + "productos/create.php";
       const body     = { nombre, precio: parseFloat(precio), stock: parseInt(stock), imagen: "" };
       if (modoEdicion) body.id = document.getElementById("productoId").value;
-
       try {
         const res  = await fetch(endpoint, {
           method: "POST",
@@ -881,7 +1028,6 @@ document.addEventListener("DOMContentLoaded", () => {
         let data;
         try { data = JSON.parse(text); } catch { throw new Error("Respuesta no JSON"); }
         if (!res.ok || data.ok === false) throw new Error(data.error || "Error al guardar");
-
         msg.textContent = modoEdicion ? "Producto actualizado ✅" : "Producto creado ✅";
         msg.classList.remove("d-none");
         setTimeout(() => {
@@ -896,15 +1042,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("btnConfirmarEliminar")?.addEventListener("click", async () => {
       try {
-        await apiFetch(BASE_API + "productos/delete.php", {
-          method: "POST",
-          body: JSON.stringify({ id: productoAEliminar })
-        });
+        await apiFetch(BASE_API + "productos/delete.php", { method: "POST", body: JSON.stringify({ id: productoAEliminar }) });
         bootstrap.Modal.getInstance(document.getElementById("modalEliminar")).hide();
         cargarInventario();
-      } catch (e) {
-        console.error("Error eliminando:", e);
-      }
+      } catch (e) { console.error("Error eliminando:", e); }
     });
 
     cargarInventario();
@@ -913,13 +1054,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // ===== USUARIOS =====
   const usuariosBody = document.getElementById("usuariosBody");
   if (usuariosBody) {
-    let todosUsuarios    = [];
-    let usuarioAEliminar = null;
+    let todosUsuarios      = [];
+    let usuarioAEliminar   = null;
     let modoEdicionUsuario = false;
 
     async function cargarUsuarios() {
       try {
-        const data   = await apiFetch(BASE_API + "usuarios/list.php");
+        const data    = await apiFetch(BASE_API + "usuarios/list.php");
         todosUsuarios = data.data || [];
         renderUsuarios(todosUsuarios);
         actualizarContadoresUsuarios(todosUsuarios);
@@ -945,11 +1086,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderUsuarios(lista) {
       const empty = document.getElementById("usuariosEmpty");
-      if (!lista.length) {
-        usuariosBody.innerHTML = "";
-        empty?.classList.remove("d-none");
-        return;
-      }
+      if (!lista.length) { usuariosBody.innerHTML = ""; empty?.classList.remove("d-none"); return; }
       empty?.classList.add("d-none");
       usuariosBody.innerHTML = lista.map(u => `
         <tr>
@@ -989,15 +1126,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("btnNuevoUsuario")?.addEventListener("click", () => {
       modoEdicionUsuario = false;
-      document.getElementById("modalUsuarioTitulo").textContent = "Nuevo usuario";
-      document.getElementById("usuarioId").value       = "";
-      document.getElementById("uNombre").value         = "";
-      document.getElementById("uEmail").value          = "";
-      document.getElementById("uPassword").value       = "";
-      document.getElementById("uPassword").required    = true;
-      document.getElementById("uPasswordHint").textContent = "";
-      document.getElementById("uRol").value            = "Cliente";
-      document.getElementById("btnGuardarUsuario").textContent = "Crear usuario";
+      document.getElementById("modalUsuarioTitulo").textContent   = "Nuevo usuario";
+      document.getElementById("usuarioId").value                  = "";
+      document.getElementById("uNombre").value                    = "";
+      document.getElementById("uEmail").value                     = "";
+      document.getElementById("uPassword").value                  = "";
+      document.getElementById("uPassword").required               = true;
+      document.getElementById("uPasswordHint").textContent        = "";
+      document.getElementById("uRol").value                       = "Cliente";
+      document.getElementById("btnGuardarUsuario").textContent    = "Crear usuario";
       document.getElementById("uErr").classList.add("d-none");
       document.getElementById("uMsg").classList.add("d-none");
     });
@@ -1006,20 +1143,19 @@ document.addEventListener("DOMContentLoaded", () => {
       const btnEditar = e.target.closest(".btn-editar-usuario");
       if (btnEditar) {
         modoEdicionUsuario = true;
-        document.getElementById("modalUsuarioTitulo").textContent = "Editar usuario";
-        document.getElementById("usuarioId").value   = btnEditar.dataset.id;
-        document.getElementById("uNombre").value     = btnEditar.dataset.nombre;
-        document.getElementById("uEmail").value      = btnEditar.dataset.email;
-        document.getElementById("uPassword").value   = "";
-        document.getElementById("uPassword").required = false;
-        document.getElementById("uPasswordHint").textContent = "Deja en blanco para no cambiar la contraseña";
-        document.getElementById("uRol").value        = btnEditar.dataset.rol;
-        document.getElementById("btnGuardarUsuario").textContent = "Guardar cambios";
+        document.getElementById("modalUsuarioTitulo").textContent  = "Editar usuario";
+        document.getElementById("usuarioId").value                 = btnEditar.dataset.id;
+        document.getElementById("uNombre").value                   = btnEditar.dataset.nombre;
+        document.getElementById("uEmail").value                    = btnEditar.dataset.email;
+        document.getElementById("uPassword").value                 = "";
+        document.getElementById("uPassword").required              = false;
+        document.getElementById("uPasswordHint").textContent       = "Deja en blanco para no cambiar la contraseña";
+        document.getElementById("uRol").value                      = btnEditar.dataset.rol;
+        document.getElementById("btnGuardarUsuario").textContent   = "Guardar cambios";
         document.getElementById("uErr").classList.add("d-none");
         document.getElementById("uMsg").classList.add("d-none");
         new bootstrap.Modal(document.getElementById("modalUsuario")).show();
       }
-
       const btnEliminar = e.target.closest(".btn-eliminar-usuario");
       if (btnEliminar) {
         usuarioAEliminar = btnEliminar.dataset.id;
@@ -1034,15 +1170,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const rol      = document.getElementById("uRol").value;
       const err      = document.getElementById("uErr");
       const msg      = document.getElementById("uMsg");
-
       err.classList.add("d-none");
       msg.classList.add("d-none");
-
       if (!nombre || !email)                                     { err.textContent = "Nombre y correo son obligatorios."; err.classList.remove("d-none"); return; }
       if (!email.includes("@"))                                  { err.textContent = "El correo no es válido.";           err.classList.remove("d-none"); return; }
       if (!modoEdicionUsuario && password.length < 6)            { err.textContent = "La contraseña debe tener al menos 6 caracteres."; err.classList.remove("d-none"); return; }
       if (modoEdicionUsuario && password && password.length < 6) { err.textContent = "La contraseña debe tener al menos 6 caracteres."; err.classList.remove("d-none"); return; }
-
       try {
         if (modoEdicionUsuario) {
           const body = { id: document.getElementById("usuarioId").value, nombre, email, rol };
@@ -1051,15 +1184,12 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           await apiFetch(BASE_API + "usuarios/create.php", { method: "POST", body: JSON.stringify({ nombre, email, password, rol }) });
         }
-
         msg.textContent = modoEdicionUsuario ? "Usuario actualizado ✅" : "Usuario creado ✅";
         msg.classList.remove("d-none");
-
         setTimeout(() => {
           bootstrap.Modal.getInstance(document.getElementById("modalUsuario")).hide();
           cargarUsuarios();
         }, 1000);
-
       } catch (e) {
         err.textContent = e.message || "No se pudo guardar el usuario.";
         err.classList.remove("d-none");
@@ -1071,9 +1201,7 @@ document.addEventListener("DOMContentLoaded", () => {
         await apiFetch(BASE_API + "usuarios/delete.php", { method: "POST", body: JSON.stringify({ id: usuarioAEliminar }) });
         bootstrap.Modal.getOrCreateInstance(document.getElementById("modalEliminarUsuario")).hide();
         cargarUsuarios();
-      } catch (e) {
-        console.error("Error eliminando usuario:", e);
-      }
+      } catch (e) { console.error("Error eliminando usuario:", e); }
     });
 
     cargarUsuarios();
@@ -1084,22 +1212,18 @@ document.addEventListener("DOMContentLoaded", () => {
   if (kpiTotal) {
     (async () => {
       try {
-        const data   = await apiFetch(BASE_API + "equipos/list.php");
+        const data    = await apiFetch(BASE_API + "equipos/list.php");
         const equipos = data.data || [];
-
         document.getElementById("kpiTotal").textContent = equipos.length;
         document.getElementById("kpiDiag").textContent  = equipos.filter(e => e.estatus === "Diagnóstico").length;
         document.getElementById("kpiRep").textContent   = equipos.filter(e => e.estatus === "Reparación").length;
         document.getElementById("kpiListo").textContent = equipos.filter(e => e.estatus === "Listo").length;
-
         const recientes = [...equipos].slice(0, 5);
         const tbody     = document.getElementById("tblRecientes");
-
         if (!recientes.length) {
           tbody.innerHTML = `<tr><td colspan="5" class="text-secondary text-center py-3">No hay registros aún.</td></tr>`;
           return;
         }
-
         tbody.innerHTML = recientes.map(e => `
           <tr>
             <td class="fw-semibold">${e.folio}</td>
@@ -1109,7 +1233,6 @@ document.addEventListener("DOMContentLoaded", () => {
             <td class="text-secondary small">${e.fecha_ingreso}</td>
           </tr>
         `).join("");
-
       } catch (err) {
         document.getElementById("tblRecientes").innerHTML =
           `<tr><td colspan="5" class="text-danger">Error: ${err.message}</td></tr>`;
